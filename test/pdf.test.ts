@@ -139,9 +139,18 @@ describe('ブラウザ印刷用の @page 規則', () => {
     expect(buildPageCss(opts({ title: 'a"b\\c' }))).toContain('content: "a\\"b\\\\c"')
   })
 
-  it('どちらも出さないならマージンボックスを作らない', () => {
+  it('どちらも出さないときは上下に空の枠を置く', () => {
+    // 枠の無い辺には、ブラウザ側の既定ヘッダー（日付・URL）が出てしまう
     const css = buildPageCss(opts({ titlePlacement: 'none', pageNumberPlacement: 'none' }))
-    expect(css).not.toContain('@top-')
-    expect(css).not.toContain('@bottom-')
+    expect(css).toContain('@top-left { content: ""')
+    expect(css).toContain('@bottom-left { content: ""')
+    expect(css).not.toContain('counter(page)')
+    expect(css).not.toContain('実験レポート')
+  })
+
+  it('片側だけ使うときも、もう一方の辺を空の枠で塞ぐ', () => {
+    const css = buildPageCss(opts({ titlePlacement: 'header', titleAlign: 'left', pageNumberPlacement: 'none' }))
+    expect(css).toContain('@top-left { content: "実験レポート"')
+    expect(css).toContain('@bottom-left { content: ""')
   })
 })

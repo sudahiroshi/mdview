@@ -39,7 +39,7 @@
     "pack": "electron-vite build && electron-builder --mac",
     "web:dev": "vite --config vite.config.web.ts",
     "web:build": "tsc --noEmit -p tsconfig.web.json && vite build --config vite.config.web.ts",
-    "web:preview": "vite preview --config vite.config.web.ts"
+    "web:serve": "node tools/serve-web.mjs"
   },
   "build": {
     "appId": "jp.ac.chibatech.suda.mdview",

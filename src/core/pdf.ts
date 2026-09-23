@@ -171,6 +171,12 @@ export function buildPageCss(o: DocPdfOptions): string {
   const m = marginsInInches(o)
   const mm = (inches: number): string => `${(inches * MM_PER_INCH).toFixed(2)}mm`
   const size = o.pageSize === 'B5' ? '182mm 257mm' : o.pageSize
+  // マージンボックスを書いた辺では、ブラウザ側の既定ヘッダー（日付・タイトル・URL）が
+  // 出なくなる。抑止は辺ごとなので、何も置かない辺には空の枠を入れて打ち消す。
+  const has = (edge: 'top' | 'bottom'): boolean => [...boxes.keys()].some((k) => k.startsWith(`@${edge}-`))
+  if (!has('top')) boxes.set('@top-left', ['""'])
+  if (!has('bottom')) boxes.set('@bottom-left', ['""'])
+
   const rules = [...boxes].map(
     ([box, parts]) =>
       `  ${box} { content: ${parts.join(' " " ')}; font-size: 9pt; color: #444; ` +

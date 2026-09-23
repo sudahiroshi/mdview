@@ -171,10 +171,15 @@ LaTeX 側では `\usepackage{booktabs}` が必要です（出力の先頭にコ�
 同じ画面のコードをそのままブラウザでも動かせます。
 
 ```sh
-npm run web:dev       # 開発用（http://localhost:5174）
-npm run web:build     # dist-web/ に書き出す
-npm run web:preview   # 書き出したものを確認（http://localhost:4174）
+npm run web:dev     # 開発用（http://localhost:5174）
+npm run web:build   # dist-web/ に書き出す
+npm run web:serve   # 書き出したものを配る（http://localhost:4174）
 ```
+
+`web:serve` は `tools/serve-web.mjs`（依存なしの Node 製）です。入口の HTML と
+Service Worker は `no-cache`、ハッシュ付きの資材は 1 年の `immutable` を返します。
+localhost は安全なオリジンとして扱われるので、HTTP のままでも Service Worker と
+File System Access API が動きます。
 
 Service Worker でアプリ本体をキャッシュするので、一度開けばオフラインでも起動します。
 インストールすると独立したウインドウで動きます。
@@ -189,6 +194,12 @@ Service Worker でアプリ本体をキャッシュするので、一度開け�
 | PNG / SVG の保存 | 保存先を選ぶ | 保存先を選ぶ |
 | PDF | ボタン一発で保存 | **印刷ダイアログで「PDF として保存」を選ぶ** |
 | 文書名・ページ番号 | printToPDF の雛形 | CSS の `@page` マージンボックス（結果は同じ） |
+
+**印刷ダイアログの「ヘッダーとフッター」は、入れても切っても出力は変わりません。**
+マージンボックスを書いた辺ではブラウザ側の既定（日付・タイトル・URL）が出なくなるためです。
+抑止は辺ごとに効くので、文書名もページ番号も「表示しない」を選んだときは、
+上下それぞれに空の枠を置いて打ち消しています。実機の Chrome で、チェックの有無で
+出力が 1 文字も変わらないことを確認済みです。
 
 **対応ブラウザは Chrome / Edge です。** Safari と Firefox はローカルファイルを扱う API
 （File System Access API）を実装していないため、ファイル選択は `<input type=file>` に、
