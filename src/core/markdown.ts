@@ -6,6 +6,7 @@ import { isExternalUrl, resolveFromDoc, assetUrl } from './paths.js'
 import { parseFenceInfo, type DiagramKind, diagramKindOf } from './fence.js'
 import { implicitFigures, tableCaptions } from './structure.js'
 import { applyNumbering, type NumberingOptions, type OutlineItem, type LabelEntry } from './numbering.js'
+import { extractTables, type TableData } from './table.js'
 
 export interface DiagramBlock {
   kind: DiagramKind
@@ -24,6 +25,8 @@ export interface RenderEnv {
   /** 番号付けの結果（アウトラインと参照表）。 */
   outline: OutlineItem[]
   labels: Map<string, LabelEntry>
+  /** 表の構造。LaTeX 書き出しで使う。 */
+  tables: Map<string, TableData>
   [key: string | symbol]: unknown
 }
 
@@ -152,6 +155,7 @@ export function createParser(): MarkdownIt {
     const result = applyNumbering(state, md, env.numbering)
     env.outline = result.outline
     env.labels = result.labels
+    env.tables = extractTables(state.tokens)
     return true
   })
   diagramFences(md)
@@ -167,7 +171,7 @@ export interface ParsedDoc {
 }
 
 export function parse(md: MarkdownIt, source: string, docDir: string, numbering: NumberingOptions): ParsedDoc {
-  const env: RenderEnv = { docDir, diagrams: [], numbering, outline: [], labels: new Map() }
+  const env: RenderEnv = { docDir, diagrams: [], numbering, outline: [], labels: new Map(), tables: new Map() }
   return { tokens: md.parse(source, env), env }
 }
 

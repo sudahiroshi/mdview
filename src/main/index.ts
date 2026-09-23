@@ -5,6 +5,7 @@ import { DocWatcher } from './watcher.js'
 import { registerAssetScheme, handleAssetScheme, setAssetRoot } from './assets.js'
 import * as settings from './settings.js'
 import { renderPlantUml } from './plantuml.js'
+import { saveWithDialog, copyText, svgToPdf, type SaveRequest } from './export.js'
 
 import type { DocPayload } from '../core/types.js'
 
@@ -160,6 +161,19 @@ app.whenReady().then(() => {
   ipcMain.handle('doc:open-dialog', () => showOpenDialog())
   ipcMain.handle('doc:load', (_e, path: string) => openDoc(path))
   ipcMain.handle('diagram:plantuml', (_e, code: string) => renderPlantUml(code))
+
+  ipcMain.handle('export:save', (_e, req: SaveRequest, data: Uint8Array | string) => saveWithDialog(win, req, data))
+  ipcMain.handle('export:pdf', async (_e, req: SaveRequest, svg: string, w: number, h: number) => {
+    const pdf = await svgToPdf(svg, w, h)
+    return saveWithDialog(win, req, pdf)
+  })
+  ipcMain.handle('export:copy', (_e, text: string) => copyText(text))
+
+  // 動作検証用。保存ダイアログを挟まずに PDF のバイト列を取り出す。
+  // デバッグポートを開いているときだけ登録する。
+  if (process.env['MDVIEW_DEBUG_PORT']) {
+    ipcMain.handle('debug:pdf-bytes', (_e, svg: string, w: number, h: number) => svgToPdf(svg, w, h))
+  }
   ipcMain.handle('settings:get', () => settings.load())
   ipcMain.handle('settings:set', (_e, patch: Partial<settings.Settings>) => {
     const next = settings.save(patch)

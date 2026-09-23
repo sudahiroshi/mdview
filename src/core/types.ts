@@ -18,3 +18,12 @@ export interface Settings {
   recentFiles: string[]
   window: { width: number; height: number; x?: number; y?: number }
 }
+
+export interface SaveRequest {
+  /** 保存ダイアログの初期ファイル名。 */
+  defaultName: string
+  /** 初期ディレクトリ（通常は表示中の文書と同じ場所）。 */
+  dir?: string
+  extensions: string[]
+  filterName: string
+}

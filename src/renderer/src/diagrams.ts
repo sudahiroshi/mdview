@@ -23,8 +23,18 @@ function initMermaid(): void {
   mermaid.initialize({
     startOnLoad: false,
     theme: 'default',
+    // 既定の look（neo）はノードに filter:drop-shadow を掛ける。
+    // CSS フィルタが掛かった要素は Chromium の印刷経路でラスタライズされるため、
+    // PDF がベクターでなくなる。classic は装飾を使わず、資料への貼り込みにも向く。
+    look: 'classic',
     securityLevel: 'strict',
-    fontFamily: "-apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif"
+    fontFamily: "-apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif",
+    // ラベルを foreignObject ではなく text 要素で描かせる。
+    // foreignObject は <img> 経由のラスタライズで無視されるため、
+    // このままでは PNG 書き出しで文字が消える。
+    htmlLabels: false,
+    flowchart: { htmlLabels: false },
+    class: { htmlLabels: false }
   })
   mermaidReady = true
 }

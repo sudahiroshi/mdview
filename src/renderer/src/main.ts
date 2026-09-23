@@ -2,6 +2,9 @@ import 'katex/dist/katex.min.css'
 import { createParser, parse, renderTokens } from '@core/markdown'
 import { sanitizeInPlace } from '@core/sanitize'
 import { renderDiagrams } from './diagrams'
+import { showMenu } from './menu'
+import { copyTableLatex, exportPdf, exportPng, exportSvg, saveTableLatex, snapshotSvg, toPngBytes, type ExportContext } from './export'
+import type { TableData } from '@core/table'
 import type { OutlineItem } from '@core/numbering'
 import type { DocPayload, Settings } from '@core/types'
 
@@ -56,6 +59,8 @@ function render(next: DocPayload | null, opts: { keepScroll?: boolean } = {}): v
   sanitizeInPlace(host)
 
   el.content.replaceChildren(host)
+  exportCtx.docPath = next.path
+  attachTableBars(host, parsed.env.tables)
   el.title.textContent = next.path.replace(/^.*\//, '')
   document.title = `${el.title.textContent} — mdview`
   buildOutline(parsed.env.outline)
@@ -63,6 +68,8 @@ function render(next: DocPayload | null, opts: { keepScroll?: boolean } = {}): v
 
   void renderDiagrams(host, parsed.env.diagrams).then(() => {
     if (gen !== generation) return
+    // 図が描き上がってから、SVG を持つ図にだけボタンを付ける
+    attachFigureBars(host)
     // 図の高さが確定してから位置を合わせ直す
     el.content.scrollTop = scroll
   })
@@ -91,6 +98,90 @@ el.content.addEventListener('click', (e) => {
   e.preventDefault()
   document.getElementById(decodeURIComponent(a.getAttribute('href')!.slice(1)))?.scrollIntoView({ block: 'start', behavior: 'smooth' })
 })
+
+/* ---------------- 書き出し ---------------- */
+
+const exportCtx: ExportContext = { docPath: null }
+
+function toast(message: string, kind: 'info' | 'error' = 'info'): void {
+  const el2 = document.createElement('div')
+  el2.className = `toast ${kind}`
+  el2.textContent = message
+  document.body.append(el2)
+  setTimeout(() => el2.remove(), kind === 'error' ? 6000 : 2600)
+}
+
+/** 書き出し処理を包んで、結果をまとめて通知する。 */
+async function run(label: string, task: () => Promise<string | null | void>): Promise<void> {
+  try {
+    const saved = await task()
+    if (saved === null) return // 保存ダイアログを取り消した
+    toast(typeof saved === 'string' ? `保存しました: ${saved.replace(/^.*\//, '')}` : `${label}をコピーしました`)
+  } catch (e) {
+    toast(`${label}に失敗しました: ${(e as Error).message}`, 'error')
+  }
+}
+
+function bar(...buttons: HTMLElement[]): HTMLElement {
+  const el2 = document.createElement('div')
+  el2.className = 'export-bar'
+  el2.append(...buttons)
+  return el2
+}
+
+function button(label: string, onClick: (btn: HTMLButtonElement) => void): HTMLButtonElement {
+  const b = document.createElement('button')
+  b.type = 'button'
+  b.textContent = label
+  b.addEventListener('click', () => onClick(b))
+  return b
+}
+
+/** 描画の済んだ図に、その図だけを書き出すためのボタンを付ける。 */
+function attachFigureBars(host: HTMLElement): void {
+  for (const fig of host.querySelectorAll<HTMLElement>('figure.diagram')) {
+    if (!fig.querySelector('svg') || fig.querySelector(':scope > .export-bar')) continue
+    fig.append(
+      bar(
+        button('PNG', (b) =>
+          showMenu(b, [
+            { label: '等倍（白背景）', run: () => run('PNG 書き出し', () => exportPng(exportCtx, fig, { scale: 1, transparent: false })) },
+            { label: '2 倍（白背景）', run: () => run('PNG 書き出し', () => exportPng(exportCtx, fig, { scale: 2, transparent: false })) },
+            { label: '3 倍（白背景）', run: () => run('PNG 書き出し', () => exportPng(exportCtx, fig, { scale: 3, transparent: false })) },
+            { label: '2 倍（背景透過）', run: () => run('PNG 書き出し', () => exportPng(exportCtx, fig, { scale: 2, transparent: true })) }
+          ])
+        ),
+        button('PDF', () => void run('PDF 書き出し', () => exportPdf(exportCtx, fig))),
+        button('SVG', () => void run('SVG 書き出し', () => exportSvg(exportCtx, fig)))
+      )
+    )
+  }
+}
+
+/** 表に LaTeX 書き出しのボタンを付ける。 */
+function attachTableBars(host: HTMLElement, tables: Map<string, TableData>): void {
+  for (const table of host.querySelectorAll<HTMLTableElement>('table[id]')) {
+    const data = tables.get(table.id)
+    if (!data) continue
+    // 表自体を包む要素が無いとボタンを重ねて置けない
+    const wrap = document.createElement('div')
+    wrap.className = 'export-host'
+    table.parentNode?.insertBefore(wrap, table)
+    wrap.append(table)
+    wrap.append(
+      bar(
+        button('LaTeX', (b) =>
+          showMenu(b, [
+            { label: 'コピー（table）', run: () => run('LaTeX', () => copyTableLatex(data, {})) },
+            { label: '.tex に保存（table）', run: () => run('LaTeX 書き出し', () => saveTableLatex(exportCtx, data, {})) },
+            { label: 'コピー（longtable）', run: () => run('LaTeX', () => copyTableLatex(data, { environment: 'longtable' })) },
+            { label: '.tex に保存（longtable）', run: () => run('LaTeX 書き出し', () => saveTableLatex(exportCtx, data, { environment: 'longtable' })) }
+          ])
+        )
+      )
+    )
+  }
+}
 
 /* ---------------- ファイルを開く ---------------- */
 
@@ -148,6 +239,12 @@ if (import.meta.env.DEV) {
   ;(window as unknown as Record<string, unknown>)['__mdview'] = {
     open: openPath,
     render,
+    exportCtx,
+    snapshotSvg,
+    toPngBytes,
+    exportPng,
+    exportPdf,
+    exportSvg,
     get doc() {
       return doc
     },

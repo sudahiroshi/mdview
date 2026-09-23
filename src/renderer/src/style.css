@@ -237,3 +237,77 @@ figure.image > figcaption {
 .doc figure, .doc table { scroll-margin-top: 16px; }
 .doc :target > figcaption,
 .doc :target > caption { color: var(--fg); }
+
+/* ---- 書き出しボタン ---- */
+figure.diagram, .export-host { position: relative; }
+.export-host { margin: 1.2em 0; }
+
+.export-bar {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.12s;
+  pointer-events: none;
+}
+
+figure.diagram:hover .export-bar,
+.export-host:hover .export-bar,
+.export-bar:focus-within { opacity: 1; pointer-events: auto; }
+
+.export-bar button {
+  font: 11px/1 -apple-system, sans-serif;
+  padding: 5px 8px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+}
+.export-bar button:hover { background: var(--surface); }
+
+/* ---- 小メニュー ---- */
+.popup-menu {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
+}
+
+.popup-menu button {
+  font: 12px/1.6 -apple-system, sans-serif;
+  text-align: left;
+  padding: 6px 10px;
+  color: var(--fg);
+  background: none;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.popup-menu button:hover { background: var(--surface); }
+
+/* ---- 通知 ---- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 200;
+  max-width: 70vw;
+  padding: 9px 16px;
+  font-size: 12px;
+  color: #fff;
+  background: #333842;
+  border-radius: 999px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
+}
+.toast.error { background: #b3261e; }
