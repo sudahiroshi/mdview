@@ -1,0 +1,18 @@
+<!--
+  mdview のアプリアイコン。
+  外形は macOS の角丸（1024 のキャンバスに 824 の角丸矩形を中央配置）。
+  中央の記号は Markdown の公式マーク（208x128 の原寸を等倍で拡大）。
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5B7CFA"/>
+      <stop offset="1" stop-color="#2B49C9"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <g transform="translate(232 340) scale(2.6923)" fill="#ffffff">
+    <rect x="5" y="5" width="198" height="118" rx="10" fill="none" stroke="#ffffff" stroke-width="10"/>
+    <path d="M30 98V30h20l20 25 20-25h20v68H90V59L70 84 50 59v39zm125 0l-30-33h20V30h20v35h20z"/>
+  </g>
+</svg>

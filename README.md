@@ -121,8 +121,18 @@ tools/probe.mjs 起動中のアプリを DevTools Protocol 経由で検査する
 `MDVIEW_DEBUG_PORT=9333 npm run dev` で起動すると、
 `MDVIEW_DEBUG_PORT=9333 node tools/probe.mjs "<JS 式>"` でレンダラの状態を確認できます。
 
+## アイコン
+
+`build/icon.svg` が原本です。変更したら次で `.icns` を作り直します。
+
+```sh
+npx electron tools/make-icon.mjs
+```
+
+外部の SVG 変換器（rsvg-convert など）には依存せず、Electron の canvas で
+`.icns` に必要な 10 サイズを書き出して `iconutil` でまとめます。
+
 ## 既知の制限
 
-- アプリのアイコンは Electron の既定のままです。
 - 文書全体を 1 つの PDF に書き出す機能はありません（図単位のみ）。
 - 未署名・未公証のため、配布するには別途 Apple の署名が必要です。

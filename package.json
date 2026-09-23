@@ -78,7 +78,8 @@
         }
       ],
       "identity": null,
-      "darkModeSupport": true
+      "darkModeSupport": true,
+      "icon": "build/icon.icns"
     }
   }
 }
