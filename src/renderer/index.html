@@ -14,6 +14,7 @@
       <header id="toolbar">
         <div class="drag-region"></div>
         <button id="btn-open" type="button">開く…</button>
+        <button id="btn-doc-pdf" type="button" disabled>PDF…</button>
         <label>番号
           <select id="sel-number-mode">
             <option value="none">なし</option>
@@ -45,6 +46,79 @@
         </main>
       </div>
     </div>
+    <dialog id="pdf-dialog">
+      <form method="dialog" id="pdf-form">
+        <h2>文書全体を PDF に書き出す</h2>
+
+        <div class="row">
+          <label for="pdf-title">文書名</label>
+          <input id="pdf-title" type="text" autocomplete="off" />
+        </div>
+
+        <div class="row">
+          <label for="pdf-page-size">用紙</label>
+          <select id="pdf-page-size">
+            <option value="A4">A4</option>
+            <option value="A5">A5</option>
+            <option value="B5">B5</option>
+            <option value="Letter">Letter</option>
+            <option value="Legal">Legal</option>
+          </select>
+          <label for="pdf-margin" class="sub">余白</label>
+          <input id="pdf-margin" type="number" min="5" max="50" step="1" />
+          <span class="sub">mm</span>
+        </div>
+
+        <table class="pdf-grid">
+          <thead>
+            <tr><th></th><th>位置</th><th>揃え</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">文書名</th>
+              <td>
+                <select id="pdf-title-place">
+                  <option value="none">表示しない</option>
+                  <option value="header">ページ上部</option>
+                  <option value="footer">ページ下部</option>
+                </select>
+              </td>
+              <td>
+                <select id="pdf-title-align">
+                  <option value="left">左揃え</option>
+                  <option value="center">中央揃え</option>
+                  <option value="right">右揃え</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">ページ番号</th>
+              <td>
+                <select id="pdf-page-place">
+                  <option value="none">表示しない</option>
+                  <option value="header">ページ上部</option>
+                  <option value="footer">ページ下部</option>
+                </select>
+              </td>
+              <td>
+                <select id="pdf-page-align">
+                  <option value="left">左揃え</option>
+                  <option value="center">中央揃え</option>
+                  <option value="right">右揃え</option>
+                </select>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <label class="check"><input id="pdf-total" type="checkbox" /> 総ページ数を添える（3 / 12）</label>
+
+        <div class="actions">
+          <button type="button" id="pdf-cancel">キャンセル</button>
+          <button type="submit" id="pdf-submit" class="primary">書き出す</button>
+        </div>
+      </form>
+    </dialog>
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

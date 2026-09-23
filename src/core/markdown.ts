@@ -25,6 +25,8 @@ export interface RenderEnv {
   /** 番号付けの結果（アウトラインと参照表）。 */
   outline: OutlineItem[]
   labels: Map<string, LabelEntry>
+  /** 文書タイトルとみなした見出しの文言（無ければ null）。 */
+  docTitle: string | null
   /** 表の構造。LaTeX 書き出しで使う。 */
   tables: Map<string, TableData>
   [key: string | symbol]: unknown
@@ -155,6 +157,7 @@ export function createParser(): MarkdownIt {
     const result = applyNumbering(state, md, env.numbering)
     env.outline = result.outline
     env.labels = result.labels
+    env.docTitle = result.title
     env.tables = extractTables(state.tokens)
     return true
   })
@@ -171,7 +174,15 @@ export interface ParsedDoc {
 }
 
 export function parse(md: MarkdownIt, source: string, docDir: string, numbering: NumberingOptions): ParsedDoc {
-  const env: RenderEnv = { docDir, diagrams: [], numbering, outline: [], labels: new Map(), tables: new Map() }
+  const env: RenderEnv = {
+    docDir,
+    diagrams: [],
+    numbering,
+    outline: [],
+    labels: new Map(),
+    docTitle: null,
+    tables: new Map()
+  }
   return { tokens: md.parse(source, env), env }
 }
 

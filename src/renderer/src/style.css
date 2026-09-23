@@ -311,3 +311,90 @@ figure.diagram:hover .export-bar,
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
 }
 .toast.error { background: #b3261e; }
+
+/* ---- PDF 書き出しダイアログ ---- */
+#pdf-dialog {
+  min-width: 420px;
+  padding: 20px 22px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.28);
+}
+
+#pdf-dialog::backdrop { background: rgb(0 0 0 / 0.28); }
+
+#pdf-dialog h2 { margin: 0 0 16px; font-size: 15px; }
+
+#pdf-dialog .row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+#pdf-dialog .row > label:first-child { flex: 0 0 72px; color: var(--muted); }
+#pdf-dialog .row .sub { color: var(--muted); }
+#pdf-dialog #pdf-title { flex: 1 1 auto; }
+#pdf-dialog #pdf-margin { width: 62px; }
+
+#pdf-dialog input[type='text'],
+#pdf-dialog input[type='number'],
+#pdf-dialog select {
+  font: inherit;
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+
+#pdf-dialog input:disabled,
+#pdf-dialog select:disabled { opacity: 0.45; }
+
+.pdf-grid {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4px 0 12px;
+  font-size: 13px;
+}
+.pdf-grid th, .pdf-grid td { padding: 4px 6px 4px 0; text-align: left; font-weight: normal; }
+.pdf-grid thead th { color: var(--muted); font-size: 12px; }
+.pdf-grid tbody th { color: var(--muted); width: 72px; }
+.pdf-grid select { width: 118px; }
+
+#pdf-dialog .check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+#pdf-dialog .check:has(input:disabled) { opacity: 0.45; }
+
+#pdf-dialog .actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+#pdf-dialog .actions button {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 14px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  cursor: pointer;
+}
+#pdf-dialog .actions button.primary {
+  color: #fff;
+  background: var(--accent);
+  border-color: transparent;
+}
+#pdf-dialog .actions button:disabled { opacity: 0.55; cursor: default; }

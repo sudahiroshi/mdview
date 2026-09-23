@@ -1,5 +1,10 @@
 /** メイン・プリロード・レンダラで共有する型（値を持たないので実行時依存は生まない）。 */
 
+import type { DocPdfOptions } from './pdf.js'
+
+/** 文書全体の PDF 設定のうち、文書ごとに変わる title を除いて永続化する分。 */
+export type DocPdfSettings = Omit<DocPdfOptions, 'title'>
+
 export interface DocPayload {
   path: string
   dir: string
@@ -17,6 +22,7 @@ export interface Settings {
   theme: Theme
   recentFiles: string[]
   window: { width: number; height: number; x?: number; y?: number }
+  docPdf: DocPdfSettings
 }
 
 export interface SaveRequest {

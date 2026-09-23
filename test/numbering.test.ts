@@ -224,3 +224,21 @@ describe('自動採番の id', () => {
     expect(outlineOf(r)).toEqual(['sec:1 節'])
   })
 })
+
+describe('文書タイトルの取り出し', () => {
+  it('タイトル見出しがあればその文言を返す', () => {
+    expect(renderMd('# 修士論文\n\n## 序論\n').env.docTitle).toBe('修士論文')
+  })
+
+  it('H1 が複数あるなら文書タイトルは無いものとする', () => {
+    expect(renderMd('# 序論\n\n# 手法\n').env.docTitle).toBeNull()
+  })
+
+  it('H1 が無い文書でも null を返す', () => {
+    expect(renderMd('## 概要\n').env.docTitle).toBeNull()
+  })
+
+  it('タイトルに番号は混ざらない', () => {
+    expect(renderMd('# 題目 {#sec:t}\n\n## 序論\n').env.docTitle).toBe('題目')
+  })
+})

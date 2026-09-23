@@ -5,7 +5,8 @@ import { DocWatcher } from './watcher.js'
 import { registerAssetScheme, handleAssetScheme, setAssetRoot } from './assets.js'
 import * as settings from './settings.js'
 import { renderPlantUml } from './plantuml.js'
-import { saveWithDialog, copyText, svgToPdf, type SaveRequest } from './export.js'
+import { saveWithDialog, copyText, svgToPdf, documentToPdf, type SaveRequest, type RendererTarget } from './export.js'
+import type { DocPdfOptions } from '../core/pdf.js'
 
 import type { DocPayload } from '../core/types.js'
 
@@ -80,6 +81,14 @@ function buildMenu(): void {
         { label: '開く…', accelerator: 'CmdOrCtrl+O', click: () => void showOpenDialog().then((d) => d && win?.webContents.send('doc:opened', d)) },
         { label: '最近使った文書', submenu: recentItems },
         { type: 'separator' },
+        { type: 'separator' },
+        {
+          label: '文書全体を PDF に書き出し…',
+          accelerator: 'CmdOrCtrl+P',
+          enabled: currentDoc !== null,
+          click: () => win?.webContents.send('ui:doc-pdf')
+        },
+        { type: 'separator' },
         { label: '再読み込み', accelerator: 'CmdOrCtrl+R', click: () => currentDoc && void openDocInWindow(currentDoc) },
         { type: 'separator' },
         { role: 'close', label: 'ウインドウを閉じる' }
@@ -135,9 +144,18 @@ function createWindow(): void {
   win.on('moved', persistBounds)
   win.on('closed', () => { win = null; watcher.close() })
 
+  const target = rendererTarget()
+  if (target.url) void win.loadURL(target.url)
+  else void win.loadFile(target.file as string)
+}
+
+/** レンダラの場所。印刷用の隠しウインドウでも同じものを読ませる。 */
+function rendererTarget(): RendererTarget {
   const devUrl = process.env['ELECTRON_RENDERER_URL']
-  if (devUrl) void win.loadURL(devUrl)
-  else void win.loadFile(join(import.meta.dirname, '../renderer/index.html'))
+  return {
+    ...(devUrl ? { url: devUrl } : { file: join(import.meta.dirname, '../renderer/index.html') }),
+    preload: join(import.meta.dirname, '../preload/index.cjs')
+  }
 }
 
 // 開発時の動作検証用。MDVIEW_DEBUG_PORT を付けて起動すると DevTools Protocol で
@@ -168,11 +186,18 @@ app.whenReady().then(() => {
     return saveWithDialog(win, req, pdf)
   })
   ipcMain.handle('export:copy', (_e, text: string) => copyText(text))
+  ipcMain.handle('export:doc-pdf', async (_e, req: SaveRequest, html: string, opts: DocPdfOptions) => {
+    const pdf = await documentToPdf(rendererTarget(), html, opts)
+    return saveWithDialog(win, req, pdf)
+  })
 
   // 動作検証用。保存ダイアログを挟まずに PDF のバイト列を取り出す。
   // デバッグポートを開いているときだけ登録する。
   if (process.env['MDVIEW_DEBUG_PORT']) {
     ipcMain.handle('debug:pdf-bytes', (_e, svg: string, w: number, h: number) => svgToPdf(svg, w, h))
+    ipcMain.handle('debug:doc-pdf-bytes', (_e, html: string, opts: DocPdfOptions) =>
+      documentToPdf(rendererTarget(), html, opts)
+    )
   }
   ipcMain.handle('settings:get', () => settings.load())
   ipcMain.handle('settings:set', (_e, patch: Partial<settings.Settings>) => {

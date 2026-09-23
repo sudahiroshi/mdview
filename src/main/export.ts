@@ -5,8 +5,16 @@ import { join } from 'node:path'
 const CSS_DPI = 96
 
 import type { SaveRequest } from '../core/types.js'
+import { buildTemplates, marginsInInches, pageSizeFor, type DocPdfOptions } from '../core/pdf.js'
 
 export type { SaveRequest }
+
+/** 印刷用ウインドウに読ませるレンダラの場所（開発時は dev サーバ、配布時はファイル）。 */
+export interface RendererTarget {
+  url?: string
+  file?: string
+  preload: string
+}
 
 /** 保存先を尋ねて書き出す。取り消されたら null を返す。 */
 export async function saveWithDialog(
@@ -62,5 +70,76 @@ export async function svgToPdf(svg: string, widthPx: number, heightPx: number): 
   } finally {
     win.destroy()
     await unlink(tmp).catch(() => undefined)
+  }
+}
+
+/** 印刷時だけ効かせる上書き。画面用の配色や高さ制限をここで打ち消す。 */
+const PRINT_CSS = `
+  :root, :root[data-theme='dark'] {
+    --bg: #ffffff; --fg: #1b1b1f; --muted: #5a5a66; --border: #d7d9e0;
+    --surface: #f5f6f9; --accent: #2f4bd1; --code-bg: #f2f3f7;
+    color-scheme: light;
+  }
+  html, body { margin: 0; padding: 0; height: auto; overflow: visible; background: #fff; }
+  .doc { max-width: none; margin: 0; font-size: 10.5pt; line-height: 1.75; }
+  .doc figure, .doc table, .doc pre, .diagram-body { break-inside: avoid; }
+  .doc h1, .doc h2, .doc h3, .doc h4, .doc h5, .doc h6 { break-after: avoid; }
+  .doc img, .diagram-body svg { max-width: 100%; }
+  .export-bar, .popup-menu, .toast { display: none !important; }
+`
+
+/**
+ * 文書全体を PDF にする。
+ *
+ * 画面のウインドウをそのまま印刷すると、ツールバーや、本文をスクロールさせている
+ * 入れ物ごと印刷されてページ送りが壊れる。そこで同じレンダラをもう一枚だけ隠しで
+ * 開き、本文だけを流し込んでから印刷する。同じ URL なので KaTeX のフォントや
+ * mdv-asset の画像もそのまま解決できる。
+ */
+export async function documentToPdf(target: RendererTarget, bodyHtml: string, opts: DocPdfOptions): Promise<Buffer> {
+  const win = new BrowserWindow({
+    show: false,
+    width: 1000,
+    height: 1400,
+    webPreferences: { preload: target.preload, contextIsolation: true, nodeIntegration: false, sandbox: true }
+  })
+
+  try {
+    if (target.url) await win.loadURL(target.url)
+    else await win.loadFile(target.file as string)
+
+    await win.webContents.executeJavaScript(`(async () => {
+      document.documentElement.dataset.theme = 'light'
+      document.title = ${JSON.stringify(opts.title || 'document')}
+      const style = document.createElement('style')
+      style.textContent = ${JSON.stringify(PRINT_CSS)}
+      document.head.append(style)
+
+      const root = document.createElement('div')
+      root.id = 'print-root'
+      root.innerHTML = ${JSON.stringify(bodyHtml)}
+      document.body.replaceChildren(root)
+
+      await document.fonts.ready
+      await Promise.all([...root.querySelectorAll('img')].map((img) =>
+        img.complete ? null : new Promise((r) => { img.onload = img.onerror = r })
+      ))
+      // 画像とフォントが入った後の再レイアウトを待つ
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+      return root.scrollHeight
+    })()`)
+
+    const { headerTemplate, footerTemplate, displayHeaderFooter } = buildTemplates(opts)
+    return await win.webContents.printToPDF({
+      pageSize: pageSizeFor(opts),
+      margins: marginsInInches(opts),
+      printBackground: true,
+      displayHeaderFooter,
+      headerTemplate,
+      footerTemplate,
+      preferCSSPageSize: false
+    })
+  } finally {
+    win.destroy()
   }
 }

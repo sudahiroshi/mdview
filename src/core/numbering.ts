@@ -32,6 +32,8 @@ export interface NumberingOptions {
 export interface NumberingResult {
   outline: OutlineItem[]
   labels: Map<string, LabelEntry>
+  /** 文書タイトルとみなした見出しの文言。該当が無ければ null。 */
+  title: string | null
 }
 
 const REF_PATTERN = /\[@([A-Za-z][A-Za-z0-9_:.-]*)\]/g
@@ -106,6 +108,7 @@ export function applyNumbering(state: StateCore, md: MarkdownIt, opts: Numbering
 
   const outline: OutlineItem[] = []
   const labels = new Map<string, LabelEntry>()
+  let docTitle: string | null = null
 
   const floatNumber = (n: number): string => (scopedFloats && chapter > 0 ? `${chapter}.${n}` : `${n}`)
 
@@ -126,6 +129,7 @@ export function applyNumbering(state: StateCore, md: MarkdownIt, opts: Numbering
 
       if (i === titleIndex) {
         // タイトルには番号を振らない。参照されたときは見出しの文言をそのまま使う。
+        docTitle = text
         outline.push({ kind: 'sec', level: 1, id, number: null, text })
         labels.set(id, { kind: 'sec', id, ref: null, text })
         continue
@@ -204,7 +208,7 @@ export function applyNumbering(state: StateCore, md: MarkdownIt, opts: Numbering
   }
 
   resolveRefs(state, md, labels)
-  return { outline, labels }
+  return { outline, labels, title: docTitle }
 }
 
 /** 本文中の [@id] をラベル表で解決してリンクに置き換える。 */

@@ -3,6 +3,7 @@ import { createParser, parse, renderTokens } from '@core/markdown'
 import { sanitizeInPlace } from '@core/sanitize'
 import { renderDiagrams } from './diagrams'
 import { showMenu } from './menu'
+import { openDocPdfDialog, serializeForPrint } from './doc-pdf'
 import { copyTableLatex, exportPdf, exportPng, exportSvg, saveTableLatex, snapshotSvg, toPngBytes, type ExportContext } from './export'
 import type { TableData } from '@core/table'
 import type { OutlineItem } from '@core/numbering'
@@ -15,6 +16,7 @@ const el = {
   outline: document.getElementById('outline') as HTMLElement,
   title: document.getElementById('doc-title') as HTMLElement,
   open: document.getElementById('btn-open') as HTMLButtonElement,
+  docPdf: document.getElementById('btn-doc-pdf') as HTMLButtonElement,
   numberMode: document.getElementById('sel-number-mode') as HTMLSelectElement,
   numberStyle: document.getElementById('sel-number-style') as HTMLSelectElement,
   theme: document.getElementById('sel-theme') as HTMLSelectElement
@@ -24,6 +26,8 @@ let settings: Settings
 let doc: DocPayload | null = null
 /** 図式の非同期描画が、すでに差し替わった文書へ書き戻すのを防ぐための世代番号。 */
 let generation = 0
+/** 直近の解析結果のうち、書き出しで必要になるもの。 */
+let docTitle: string | null = null
 
 /* ---------------- テーマ ---------------- */
 
@@ -45,6 +49,8 @@ function render(next: DocPayload | null, opts: { keepScroll?: boolean } = {}): v
   const gen = ++generation
   doc = next
 
+  el.docPdf.disabled = !next
+
   if (!next) {
     el.content.innerHTML = '<div class="empty"><p>Markdown ファイルをドロップ、または <kbd>⌘O</kbd> で開いてください。</p></div>'
     el.outline.replaceChildren()
@@ -63,6 +69,7 @@ function render(next: DocPayload | null, opts: { keepScroll?: boolean } = {}): v
   attachTableBars(host, parsed.env.tables)
   el.title.textContent = next.path.replace(/^.*\//, '')
   document.title = `${el.title.textContent} — mdview`
+  docTitle = parsed.env.docTitle
   buildOutline(parsed.env.outline)
   el.content.scrollTop = scroll
 
@@ -183,6 +190,33 @@ function attachTableBars(host: HTMLElement, tables: Map<string, TableData>): voi
   }
 }
 
+/** 文書全体を PDF にする。書き出し条件はダイアログで決める。 */
+function requestDocPdf(): void {
+  const host = el.content.querySelector<HTMLElement>('.doc')
+  if (!host || !doc) return
+  const current = doc
+  const base = current.path.replace(/^.*\//, '').replace(/\.[^.]+$/, '')
+  openDocPdfDialog({
+    host,
+    docPath: current.path,
+    docTitle,
+    settings,
+    persist: async (patch) => {
+      settings = await window.api.setSettings(patch)
+    },
+    save: (options, html) =>
+      window.api.saveDocumentPdf(
+        { defaultName: `${base}.pdf`, dir: current.dir, extensions: ['pdf'], filterName: 'PDF 文書' },
+        html,
+        options
+      ),
+    notify: toast
+  })
+}
+
+el.docPdf.addEventListener('click', requestDocPdf)
+window.api.onRequestDocPdf(requestDocPdf)
+
 /* ---------------- ファイルを開く ---------------- */
 
 async function openPath(path: string): Promise<void> {
@@ -245,6 +279,7 @@ if (import.meta.env.DEV) {
     exportPng,
     exportPdf,
     exportSvg,
+    serializeForPrint,
     get doc() {
       return doc
     },
