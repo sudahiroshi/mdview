@@ -165,3 +165,47 @@ body {
 .doc thead th { background: var(--surface); }
 
 .doc hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
+
+/* ---- 図式 ---- */
+figure.diagram {
+  margin: 1.6em 0;
+  padding: 0;
+}
+
+.diagram-body {
+  /* 図は書き出して白地の資料に貼ることが前提なので、アプリのテーマに依らず常に白地にする */
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  overflow-x: auto;
+  text-align: center;
+}
+
+.diagram-body svg { max-width: 100%; }
+
+.diagram-pending { color: var(--muted); font-size: 13px; }
+
+.diagram-error {
+  color: #b3261e;
+  background: #fff3f2;
+  border: 1px solid #f2c3bf;
+  border-radius: 6px;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 13px;
+}
+.diagram-error pre { margin: 6px 0 0; white-space: pre-wrap; font-size: 12px; }
+
+figure.diagram > figcaption,
+figure.image > figcaption {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 0.9em;
+  color: var(--muted);
+}
+
+/* ---- 数式 ---- */
+.doc eq { font-size: 1em; }
+.doc section.eq { margin: 1.2em 0; overflow-x: auto; }
+.katex-display { margin: 0; }

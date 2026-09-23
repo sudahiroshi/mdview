@@ -4,6 +4,7 @@ import { join, dirname } from 'node:path'
 import { DocWatcher } from './watcher.js'
 import { registerAssetScheme, handleAssetScheme, setAssetRoot } from './assets.js'
 import * as settings from './settings.js'
+import { renderPlantUml } from './plantuml.js'
 
 import type { DocPayload } from '../core/types.js'
 
@@ -158,6 +159,7 @@ app.whenReady().then(() => {
 
   ipcMain.handle('doc:open-dialog', () => showOpenDialog())
   ipcMain.handle('doc:load', (_e, path: string) => openDoc(path))
+  ipcMain.handle('diagram:plantuml', (_e, code: string) => renderPlantUml(code))
   ipcMain.handle('settings:get', () => settings.load())
   ipcMain.handle('settings:set', (_e, patch: Partial<settings.Settings>) => {
     const next = settings.save(patch)

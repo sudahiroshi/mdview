@@ -1,5 +1,7 @@
+import 'katex/dist/katex.min.css'
 import { createParser, parse, renderTokens } from '@core/markdown'
 import { sanitizeInPlace } from '@core/sanitize'
+import { renderDiagrams } from './diagrams'
 import type { DocPayload, Settings } from '@core/types'
 
 const md = createParser()
@@ -16,6 +18,8 @@ const el = {
 
 let settings: Settings
 let doc: DocPayload | null = null
+/** 図式の非同期描画が、すでに差し替わった文書へ書き戻すのを防ぐための世代番号。 */
+let generation = 0
 
 /* ---------------- テーマ ---------------- */
 
@@ -34,6 +38,7 @@ systemDark.addEventListener('change', () => {
 
 function render(next: DocPayload | null, opts: { keepScroll?: boolean } = {}): void {
   const scroll = opts.keepScroll ? el.content.scrollTop : 0
+  const gen = ++generation
   doc = next
 
   if (!next) {
@@ -54,6 +59,12 @@ function render(next: DocPayload | null, opts: { keepScroll?: boolean } = {}): v
   document.title = `${el.title.textContent} — mdview`
   buildOutline(host)
   el.content.scrollTop = scroll
+
+  void renderDiagrams(host, parsed.env.diagrams).then(() => {
+    if (gen !== generation) return
+    // 図の高さが確定してから位置を合わせ直す
+    el.content.scrollTop = scroll
+  })
 }
 
 function buildOutline(host: HTMLElement): void {

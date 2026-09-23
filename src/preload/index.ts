@@ -5,6 +5,8 @@ const api = {
   openDialog: (): Promise<DocPayload | null> => ipcRenderer.invoke('doc:open-dialog'),
   load: (path: string): Promise<DocPayload> => ipcRenderer.invoke('doc:load', path),
 
+  renderPlantUml: (code: string): Promise<string> => ipcRenderer.invoke('diagram:plantuml', code),
+
   getSettings: (): Promise<Settings> => ipcRenderer.invoke('settings:get'),
   setSettings: (patch: Partial<Settings>): Promise<Settings> => ipcRenderer.invoke('settings:set', patch),
 

@@ -1,10 +1,22 @@
 import MarkdownItFactory, { type MarkdownIt, type Token, type StateCore } from 'markdown-it'
 import attrs from 'markdown-it-attrs'
+import texmath from 'markdown-it-texmath'
+import katex from 'katex'
 import { isExternalUrl, resolveFromDoc, assetUrl } from './paths.js'
+import { parseFenceInfo, type DiagramKind, diagramKindOf } from './fence.js'
+
+export interface DiagramBlock {
+  kind: DiagramKind
+  code: string
+  id: string | null
+  caption: string | null
+}
 
 export interface RenderEnv {
   /** 表示中の .md があるディレクトリ。相対パスの画像解決に使う。 */
   docDir: string
+  /** 図式ブロックの原文。HTML には添字だけを埋め、実体はここから取り出す。 */
+  diagrams: DiagramBlock[]
   [key: string | symbol]: unknown
 }
 
@@ -55,6 +67,36 @@ function localImages(md: MarkdownIt): void {
   }
 }
 
+/**
+ * mermaid / dot / plantuml のフェンスを図式のプレースホルダに置き換える。
+ * 原文は env.diagrams に退避し、HTML には添字だけを埋める
+ * （data 属性へ直接入れるとエスケープの往復で壊れやすいため）。
+ */
+function diagramFences(md: MarkdownIt): void {
+  const base = md.renderer.rules.fence
+  md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+    const token = tokens[idx]
+    const info = parseFenceInfo(token.info)
+    const kind = diagramKindOf(info.lang)
+    if (!kind) return base ? base(tokens, idx, options, env, self) : self.renderToken(tokens, idx, options)
+
+    const list = (env as Partial<RenderEnv>)?.diagrams
+    if (!list) return base ? base(tokens, idx, options, env, self) : self.renderToken(tokens, idx, options)
+
+    const id = info.id ?? token.attrGet('id')?.toString() ?? null
+    const caption = info.caption ?? token.attrGet('caption')?.toString() ?? null
+    const index = list.push({ kind, code: token.content, id, caption }) - 1
+    const idAttr = id ? ` id="${md.utils.escapeHtml(id)}"` : ''
+    return (
+      `<figure class="diagram" data-diagram="${index}" data-kind="${kind}"${idAttr}>` +
+      `<div class="diagram-body" role="img" aria-label="${md.utils.escapeHtml(caption ?? kind)}">` +
+      `<span class="diagram-pending">描画中…</span></div>` +
+      (caption ? `<figcaption>${md.utils.escapeHtml(caption)}</figcaption>` : '') +
+      `</figure>\n`
+    )
+  }
+}
+
 /** 外部リンクを新規ウインドウ扱いにする（メイン側で既定ブラウザへ回される）。 */
 function externalLinks(md: MarkdownIt): void {
   const base = md.renderer.rules.link_open
@@ -73,7 +115,13 @@ export function createParser(): MarkdownIt {
     breaks: false
   })
   md.use(attrs, { allowedAttributes: ['id', 'class', 'width', 'height', 'caption'] })
+  md.use(texmath, {
+    engine: katex,
+    delimiters: 'dollars',
+    katexOptions: { throwOnError: false, strict: false }
+  })
   headingIds(md)
+  diagramFences(md)
   localImages(md)
   externalLinks(md)
   return md
@@ -85,7 +133,7 @@ export interface ParsedDoc {
 }
 
 export function parse(md: MarkdownIt, source: string, docDir: string): ParsedDoc {
-  const env: RenderEnv = { docDir }
+  const env: RenderEnv = { docDir, diagrams: [] }
   return { tokens: md.parse(source, env), env }
 }
 
