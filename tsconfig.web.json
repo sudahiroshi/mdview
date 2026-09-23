@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "paths": { "@core/*": ["./src/core/*"] },
+    "noEmit": true
+  },
+  "include": ["src/renderer/**/*.ts", "src/core/**/*.ts", "src/preload/*.d.ts", "test/**/*.ts"]
+}

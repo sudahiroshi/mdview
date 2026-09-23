@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="120" viewBox="0 0 320 120">
+  <rect width="320" height="120" fill="#eef3ff"/>
+  <rect x="20" y="30" width="110" height="60" rx="8" fill="#fff" stroke="#2f6feb" stroke-width="2"/>
+  <rect x="190" y="30" width="110" height="60" rx="8" fill="#fff" stroke="#2f6feb" stroke-width="2"/>
+  <line x1="130" y1="60" x2="190" y2="60" stroke="#2f6feb" stroke-width="2"/>
+  <text x="75" y="65" text-anchor="middle" font-size="14" font-family="sans-serif">入力</text>
+  <text x="245" y="65" text-anchor="middle" font-size="14" font-family="sans-serif">出力</text>
+</svg>

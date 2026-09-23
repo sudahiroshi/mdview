@@ -1,0 +1,167 @@
+:root {
+  --bg: #ffffff;
+  --fg: #1b1b1f;
+  --muted: #6b6b76;
+  --border: #e3e3e8;
+  --surface: #f7f7f9;
+  --accent: #2f6feb;
+  --code-bg: #f4f4f7;
+  --toolbar-h: 44px;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --bg: #1e1e22;
+  --fg: #e6e6ea;
+  --muted: #9a9aa5;
+  --border: #35353c;
+  --surface: #26262b;
+  --accent: #6ea0ff;
+  --code-bg: #2a2a31;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; margin: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.8 -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+}
+
+#app { display: flex; flex-direction: column; height: 100%; }
+
+/* ---- ツールバー ---- */
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: var(--toolbar-h);
+  padding: 0 12px 0 84px; /* 左は信号機ボタンの領域 */
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  flex: 0 0 auto;
+  -webkit-app-region: drag;
+}
+
+#toolbar button,
+#toolbar select { -webkit-app-region: no-drag; }
+
+#toolbar label { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); }
+
+#toolbar select,
+#toolbar button {
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 6px;
+}
+
+#toolbar button:hover { background: var(--surface); cursor: pointer; }
+
+#doc-title {
+  margin-left: auto;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- 本体 ---- */
+#body { display: flex; flex: 1 1 auto; min-height: 0; }
+
+#outline {
+  flex: 0 0 240px;
+  overflow: auto;
+  padding: 16px 8px 40px;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+#outline a {
+  display: block;
+  padding: 2px 8px;
+  color: var(--muted);
+  text-decoration: none;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#outline a:hover { background: var(--bg); color: var(--fg); }
+#outline a.lv2 { padding-left: 20px; }
+#outline a.lv3 { padding-left: 32px; }
+#outline a.lv4, #outline a.lv5, #outline a.lv6 { padding-left: 44px; }
+#outline a.fig, #outline a.tbl { padding-left: 32px; font-size: 12px; opacity: 0.85; }
+
+#content {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 32px 48px 25vh;
+  outline: none;
+}
+
+.doc { max-width: 760px; margin: 0 auto; }
+
+.empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--muted);
+}
+
+/* ---- 文書スタイル ---- */
+.doc h1, .doc h2, .doc h3, .doc h4, .doc h5, .doc h6 {
+  line-height: 1.4;
+  margin: 1.8em 0 0.6em;
+  scroll-margin-top: 16px;
+}
+.doc h1 { font-size: 1.9em; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+.doc h2 { font-size: 1.5em; }
+.doc h3 { font-size: 1.25em; }
+.doc > :first-child { margin-top: 0; }
+
+.doc a { color: var(--accent); }
+
+.doc code {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  background: var(--code-bg);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+
+.doc pre {
+  background: var(--code-bg);
+  padding: 12px 14px;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+.doc pre code { background: none; padding: 0; }
+
+.doc blockquote {
+  margin: 1em 0;
+  padding: 0.1em 1em;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+
+.doc img { max-width: 100%; }
+
+.doc table {
+  border-collapse: collapse;
+  margin: 0.4em 0;
+  font-size: 0.95em;
+}
+.doc th, .doc td { border: 1px solid var(--border); padding: 5px 10px; }
+.doc thead th { background: var(--surface); }
+
+.doc hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }

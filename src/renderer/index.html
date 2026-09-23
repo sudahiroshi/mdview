@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>mdview</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: mdv-asset:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; connect-src 'self' ws: wss: mdv-asset:"
+    />
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header id="toolbar">
+        <div class="drag-region"></div>
+        <button id="btn-open" type="button">開く…</button>
+        <label>番号
+          <select id="sel-number-mode">
+            <option value="none">なし</option>
+            <option value="headings">見出しのみ</option>
+            <option value="full">見出し + 図表</option>
+          </select>
+        </label>
+        <label>様式
+          <select id="sel-number-style">
+            <option value="ja">和文</option>
+            <option value="en">英文</option>
+          </select>
+        </label>
+        <label>テーマ
+          <select id="sel-theme">
+            <option value="system">システム</option>
+            <option value="light">ライト</option>
+            <option value="dark">ダーク</option>
+          </select>
+        </label>
+        <span id="doc-title"></span>
+      </header>
+      <div id="body">
+        <nav id="outline" aria-label="アウトライン"></nav>
+        <main id="content" tabindex="-1">
+          <div class="empty">
+            <p>Markdown ファイルをドロップ、または <kbd>⌘O</kbd> で開いてください。</p>
+          </div>
+        </main>
+      </div>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
