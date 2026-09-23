@@ -130,7 +130,9 @@ function showAssetNotice(unresolved: number): void {
   const text = document.createElement('span')
   text.textContent = grant
     ? `画像 ${unresolved} 件を読み込めません。画像のあるフォルダを許可してください。`
-    : `画像 ${unresolved} 件を読み込めません。このブラウザではフォルダを扱えません。`
+    : platform.capabilities.relativeImages
+      ? `画像 ${unresolved} 件を読み込めません。表示できるのは文書と同じフォルダの中にある画像だけです（外部 URL の画像は表示しません）。`
+      : `画像 ${unresolved} 件を読み込めません。このブラウザではフォルダを扱えません。`
   bar.append(text)
 
   if (grant) {
