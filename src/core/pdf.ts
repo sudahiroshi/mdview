@@ -88,6 +88,30 @@ export function buildTemplates(o: DocPdfOptions): Templates {
 
 const MM_PER_INCH = 25.4
 
+/** 用紙の寸法（mm）。 */
+const PAGE_MM: Record<PageSize, { width: number; height: number }> = {
+  A4: { width: 210, height: 297 },
+  A5: { width: 148, height: 210 },
+  B5: { width: 182, height: 257 },
+  Letter: { width: 215.9, height: 279.4 },
+  Legal: { width: 215.9, height: 355.6 }
+}
+
+const CSS_DPI = 96
+
+/**
+ * 本文が載る領域を CSS ピクセルで返す。
+ * これより大きい図はページからはみ出して空白ページを生むので、収まるまで縮める。
+ */
+export function contentBoxPx(o: DocPdfOptions): { width: number; height: number } {
+  const page = PAGE_MM[o.pageSize]
+  const m = marginsInInches(o)
+  return {
+    width: Math.round((page.width / MM_PER_INCH - m.left - m.right) * CSS_DPI),
+    height: Math.round((page.height / MM_PER_INCH - m.top - m.bottom) * CSS_DPI)
+  }
+}
+
 /**
  * printToPDF に渡す用紙指定。
  * B5 は Chromium が名前で解釈できないため、JIS B5（182x257mm）を実寸で渡す。

@@ -5,7 +5,7 @@ import { join } from 'node:path'
 const CSS_DPI = 96
 
 import type { SaveRequest } from '../core/types.js'
-import { buildTemplates, marginsInInches, pageSizeFor, type DocPdfOptions } from '../core/pdf.js'
+import { buildTemplates, contentBoxPx, marginsInInches, pageSizeFor, type DocPdfOptions } from '../core/pdf.js'
 
 export type { SaveRequest }
 
@@ -74,7 +74,7 @@ export async function svgToPdf(svg: string, widthPx: number, heightPx: number): 
 }
 
 /** 印刷時だけ効かせる上書き。画面用の配色や高さ制限をここで打ち消す。 */
-const PRINT_CSS = `
+const printCss = (box: { width: number; height: number }): string => `
   :root, :root[data-theme='dark'] {
     --bg: #ffffff; --fg: #1b1b1f; --muted: #5a5a66; --border: #d7d9e0;
     --surface: #f5f6f9; --accent: #2f4bd1; --code-bg: #f2f3f7;
@@ -82,9 +82,19 @@ const PRINT_CSS = `
   }
   html, body { margin: 0; padding: 0; height: auto; overflow: visible; background: #fff; }
   .doc { max-width: none; margin: 0; font-size: 10.5pt; line-height: 1.75; }
-  .doc figure, .doc table, .doc pre, .diagram-body { break-inside: avoid; }
+  .doc figure, .doc pre, .diagram-body { break-inside: avoid; }
+  /*
+   * 表は行の途中では切らず、行の境界でなら切れるようにする。
+   * 表ごと分割禁止にすると、1 ページに収まらない表が見出しごと次ページへ
+   * 押し出され、手前に空白ページができてしまう。
+   */
+  .doc table { break-inside: auto; }
+  .doc tr, .doc thead { break-inside: avoid; }
+  .doc thead { display: table-header-group; }
   .doc h1, .doc h2, .doc h3, .doc h4, .doc h5, .doc h6 { break-after: avoid; }
   .doc img, .diagram-body svg { max-width: 100%; }
+  /* ページより大きい画像はそのままだと 1 枚まるごと空白になるので天井を設ける */
+  .doc img { max-height: ${box.height - 40}px; }
   .export-bar, .popup-menu, .toast { display: none !important; }
 `
 
@@ -104,6 +114,8 @@ export async function documentToPdf(target: RendererTarget, bodyHtml: string, op
     webPreferences: { preload: target.preload, contextIsolation: true, nodeIntegration: false, sandbox: true }
   })
 
+  const box = contentBoxPx(opts)
+
   try {
     if (target.url) await win.loadURL(target.url)
     else await win.loadFile(target.file as string)
@@ -112,13 +124,27 @@ export async function documentToPdf(target: RendererTarget, bodyHtml: string, op
       document.documentElement.dataset.theme = 'light'
       document.title = ${JSON.stringify(opts.title || 'document')}
       const style = document.createElement('style')
-      style.textContent = ${JSON.stringify(PRINT_CSS)}
+      style.textContent = ${JSON.stringify(printCss(box))}
       document.head.append(style)
 
       const root = document.createElement('div')
       root.id = 'print-root'
       root.innerHTML = ${JSON.stringify(bodyHtml)}
       document.body.replaceChildren(root)
+
+      // ページに収まらない図は縮める。収めないと、はみ出した分が空白ページになる。
+      for (const fig of root.querySelectorAll('figure.diagram')) {
+        const svg = fig.querySelector('svg')
+        const w = Number(fig.dataset.width)
+        const h = Number(fig.dataset.height)
+        if (!svg || !w || !h) continue
+        // 図を囲む枠の余白とキャプションのぶんを見込んでおく
+        const k = Math.min(1, (${box.width} - 36) / w, (${box.height} - 72) / h)
+        svg.style.width = Math.floor(w * k) + 'px'
+        svg.style.height = 'auto'
+        svg.style.aspectRatio = w + ' / ' + h
+        svg.style.maxWidth = '100%'
+      }
 
       await document.fonts.ready
       await Promise.all([...root.querySelectorAll('img')].map((img) =>

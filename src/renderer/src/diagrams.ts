@@ -91,8 +91,11 @@ function normalizeSvg(el: SVGSVGElement, fig: HTMLElement): void {
   el.removeAttribute('width')
   el.removeAttribute('height')
   if (Number.isFinite(w) && Number.isFinite(h)) {
+    // 高さを px で固定すると、幅が狭まったときに中身だけが縮んで
+    // 上下に大きな余白が残る。縦横比を与えて高さを追従させる。
     el.style.width = `${w}px`
-    el.style.height = `${h}px`
+    el.style.height = 'auto'
+    el.style.aspectRatio = `${w} / ${h}`
     // 書き出し時に実寸が必要になるので保持しておく
     fig.dataset['width'] = String(w)
     fig.dataset['height'] = String(h)

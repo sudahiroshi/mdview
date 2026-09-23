@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DOC_PDF_DEFAULTS, buildTemplates, marginsInInches, pageSizeFor, type DocPdfOptions } from '@core/pdf'
+import { DOC_PDF_DEFAULTS, buildTemplates, contentBoxPx, marginsInInches, pageSizeFor, type DocPdfOptions } from '@core/pdf'
 
 const opts = (patch: Partial<DocPdfOptions> = {}): DocPdfOptions => ({
   ...DOC_PDF_DEFAULTS,
@@ -86,5 +86,29 @@ describe('余白と用紙', () => {
   it('用紙名はそのまま渡し、B5 だけ実寸に直す', () => {
     expect(pageSizeFor(opts({ pageSize: 'A4' }))).toBe('A4')
     expect(pageSizeFor(opts({ pageSize: 'B5' }))).toEqual({ width: 182 / 25.4, height: 257 / 25.4 })
+  })
+})
+
+describe('本文が載る領域', () => {
+  it('A4 から余白を引いた大きさを CSS ピクセルで返す', () => {
+    // 210x297mm から左右上下 20mm ずつ引いた 170x257mm を 96dpi 換算
+    expect(contentBoxPx(opts({ pageSize: 'A4', marginMm: 20 }))).toEqual({
+      width: Math.round((170 / 25.4) * 96),
+      height: Math.round((257 / 25.4) * 96)
+    })
+  })
+
+  it('ヘッダーのために広げた余白も反映する', () => {
+    const narrow = contentBoxPx(opts({ pageSize: 'A4', marginMm: 5, titlePlacement: 'header', pageNumberPlacement: 'footer' }))
+    // 上下は 15mm まで広げられるので、左右 5mm より縦が削られる
+    expect(narrow.width).toBe(Math.round((200 / 25.4) * 96))
+    expect(narrow.height).toBe(Math.round((267 / 25.4) * 96))
+  })
+
+  it('用紙ごとに大きさが変わる', () => {
+    const a4 = contentBoxPx(opts({ pageSize: 'A4' }))
+    const a5 = contentBoxPx(opts({ pageSize: 'A5' }))
+    expect(a5.width).toBeLessThan(a4.width)
+    expect(a5.height).toBeLessThan(a4.height)
   })
 })
