@@ -6,8 +6,6 @@ const api = {
   openDialog: (): Promise<DocPayload | null> => ipcRenderer.invoke('doc:open-dialog'),
   load: (path: string): Promise<DocPayload> => ipcRenderer.invoke('doc:load', path),
 
-  renderPlantUml: (code: string): Promise<string> => ipcRenderer.invoke('diagram:plantuml', code),
-
   /** 保存ダイアログを出してファイルへ書き出す。取り消されたら null。 */
   save: (req: SaveRequest, data: Uint8Array | string): Promise<string | null> =>
     ipcRenderer.invoke('export:save', req, data),

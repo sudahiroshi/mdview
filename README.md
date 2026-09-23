@@ -11,20 +11,16 @@ Markdown を「読む・見せる・部品を取り出す」ための macOS 向�
 
 ## 必要なもの
 
-| | 用途 | 無いとどうなるか |
-|---|---|---|
-| Node.js 22 以降 | ビルド | ビルドできない |
-| Java 17 以降 | PlantUML の描画 | PlantUML の図だけが案内表示に置き換わる |
-| `resources/plantuml.jar` | PlantUML の描画 | 同上（`node tools/fetch-plantuml.mjs` で取得） |
+ビルドに Node.js 22 以降が要るだけです。**実行時の外部依存はありません。**
 
-Mermaid・Graphviz・数式は外部コマンドを使いません（Graphviz は WebAssembly 版）。
-**図の内容を外部サーバへ送ることはありません。** PlantUML もローカルの Java で処理します。
+Mermaid・Graphviz・PlantUML・数式のすべてを、アプリに同梱した JavaScript と
+WebAssembly だけで描きます。外部コマンド（Java, Graphviz, PlantUML）は不要で、
+**図の内容を外部サーバへ送ることもありません。**
 
 ## セットアップ
 
 ```sh
 npm install
-node tools/fetch-plantuml.mjs   # PlantUML を使う場合のみ
 ```
 
 ## 使い方
@@ -178,3 +174,5 @@ npx electron tools/make-icon.mjs
 
 - 文書全体を 1 つの PDF に書き出す機能はありません（図単位のみ）。
 - 未署名・未公証のため、配布するには別途 Apple の署名が必要です。
+- PlantUML の標準ライブラリ（`!include <C4/C4_Context>` など）は同梱していません。
+  使うには `globalThis.PLANTUML_STDLIB_BASE` にバンドルの置き場所を指定する必要があります。

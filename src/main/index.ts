@@ -4,7 +4,6 @@ import { join, dirname } from 'node:path'
 import { DocWatcher } from './watcher.js'
 import { registerAssetScheme, handleAssetScheme, setAssetRoot } from './assets.js'
 import * as settings from './settings.js'
-import { renderPlantUml } from './plantuml.js'
 import { saveWithDialog, copyText, svgToPdf, documentToPdf, type SaveRequest, type RendererTarget } from './export.js'
 import type { DocPdfOptions } from '../core/pdf.js'
 
@@ -178,8 +177,6 @@ app.whenReady().then(() => {
 
   ipcMain.handle('doc:open-dialog', () => showOpenDialog())
   ipcMain.handle('doc:load', (_e, path: string) => openDoc(path))
-  ipcMain.handle('diagram:plantuml', (_e, code: string) => renderPlantUml(code))
-
   ipcMain.handle('export:save', (_e, req: SaveRequest, data: Uint8Array | string) => saveWithDialog(win, req, data))
   ipcMain.handle('export:pdf', async (_e, req: SaveRequest, svg: string, w: number, h: number) => {
     const pdf = await svgToPdf(svg, w, h)

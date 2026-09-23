@@ -4,8 +4,10 @@ import type { DiagramBlock } from '@core/markdown'
 import { sanitizeInPlace } from '@core/sanitize'
 
 type Viz = Awaited<ReturnType<typeof vizInstance>>
+type PlantUml = typeof import('@plantuml/core')
 
 let viz: Promise<Viz> | null = null
+let plantuml: Promise<PlantUml> | null = null
 /** 描画済み SVG の記憶。表示モードを切り替えるたびに mermaid を回し直さないため。 */
 const svgCache = new Map<string, string>()
 /** 文書を渡り歩くうちに際限なく溜まらないよう上限を設ける。 */
@@ -16,6 +18,62 @@ let seq = 0
 function getViz(): Promise<Viz> {
   viz ??= vizInstance()
   return viz
+}
+
+const PLANTUML_TIMEOUT_MS = 30_000
+
+/**
+ * PlantUML 本体を読み込む。4MB 近くあるので、実際に図が出てくるまで読み込まない。
+ *
+ * PlantUML は Graphviz を `globalThis.Viz` から探す（同梱の viz-global.js を
+ * 読ませる想定）。ただし同じ Viz.js をすでに dot の描画で使っているので、
+ * そちらを渡して二重持ちを避ける。無いと Smetana へ退避して図の体裁が変わる。
+ * themes.js は !theme の定義を globalThis へ登録する副作用だけの読み込み。
+ */
+function getPlantuml(): Promise<PlantUml> {
+  plantuml ??= (async () => {
+    // dot の描画で使っているものと同じ実体を渡す（WASM を二重に立てない）
+    ;(globalThis as unknown as { Viz?: unknown }).Viz = { instance: getViz }
+    await import('@plantuml/core/themes.js')
+    return import('@plantuml/core')
+  })()
+  return plantuml
+}
+
+/**
+ * PlantUML の処理を 1 本の列にして順番に流す。
+ * エンジンは内部状態を持っていて同時に複数の図を渡すと応答が返らなくなるため、
+ * 前の図が終わってから次を渡す。応答が返らない図で列が止まらないよう時間切れも設ける。
+ */
+let plantumlQueue: Promise<unknown> = Promise.resolve()
+
+function renderPlantumlSvg(code: string): Promise<string> {
+  const run = async (): Promise<string> => {
+    const { renderToString } = await getPlantuml()
+    return new Promise<string>((resolve, reject) => {
+      let settled = false
+      let timer: ReturnType<typeof setTimeout>
+      const finish = (act: () => void): void => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        act()
+      }
+      timer = setTimeout(() => finish(() => reject(new Error('描画が時間内に終わりませんでした'))), PLANTUML_TIMEOUT_MS)
+      renderToString(
+        code.split(/\r\n|\r|\n/),
+        (svg) => finish(() => resolve(svg)),
+        (message) => finish(() => reject(new Error(message || 'PlantUML の解析に失敗しました')))
+      )
+    })
+  }
+
+  const next = plantumlQueue.then(run, run)
+  plantumlQueue = next.then(
+    () => undefined,
+    () => undefined
+  )
+  return next
 }
 
 function initMermaid(): void {
@@ -69,7 +127,7 @@ async function renderSvg(block: DiagramBlock): Promise<string> {
       return v.renderString(block.code, { format: 'svg' })
     }
     case 'plantuml':
-      return window.api.renderPlantUml(block.code)
+      return renderPlantumlSvg(block.code)
   }
 }
 
