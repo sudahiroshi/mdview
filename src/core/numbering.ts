@@ -75,20 +75,39 @@ export function applyNumbering(state: StateCore, md: MarkdownIt, opts: Numbering
   const showHeadings = opts.mode !== 'none'
   const showFloats = opts.mode === 'full'
 
-  const headingLevels = tokens.filter((t) => t.type === 'heading_open').map((t) => Number(t.tag.slice(1)))
+  const headingAt = tokens.reduce<number[]>((acc, t, i) => (t.type === 'heading_open' ? [...acc, i] : acc), [])
+  const headingLevels = headingAt.map((i) => Number(tokens[i].tag.slice(1)))
+
+  // 冒頭の H1 が文書中に 1 つしかなければ、章ではなく文書タイトルとみなす。
+  // README や論文のように「# タイトル」の下に「## 序論」が並ぶ書き方では、
+  // H1 を第1章として数えると実態と合わないため、H2 から章として数える。
+  const titleIndex = headingLevels[0] === 1 && headingLevels.filter((l) => l === 1).length === 1 ? headingAt[0] : -1
+
+  // 章立ての文書かどうかは H1 の有無で判断する（タイトルとして使われている場合も含む）。
   const hasChapters = headingLevels.includes(1)
-  const topLevel = headingLevels.length ? Math.min(...headingLevels) : 1
+  const numberedLevels = headingLevels.filter((_, k) => headingAt[k] !== titleIndex)
+  const topLevel = numberedLevels.length ? Math.min(...numberedLevels) : 1
+
+  // 章より前に図表があると「図 1」と「図 1.1」が同じ文書に混在してしまう。
+  // そうなる文書は最初から通し番号に倒して、番号の付き方を一貫させる。
+  const firstChapterAt = headingAt.find((i) => i !== titleIndex && Number(tokens[i].tag.slice(1)) === topLevel) ?? -1
+  const firstFloatAt = tokens.findIndex((t) => t.type === 'figure_open' || t.type === 'table_open' || isDiagramFence(t))
+  const scopedFloats = hasChapters && firstChapterAt >= 0 && (firstFloatAt < 0 || firstFloatAt > firstChapterAt)
 
   const counters = [0, 0, 0, 0, 0, 0]
   let chapter = 0
   let figCount = 0
   let tblCount = 0
   let autoId = 0
+  // id を明示していない図表に振る連番。figCount / tblCount は章ごとに戻るため、
+  // そちらを id に使うと章をまたいで id が重複してしまう。
+  let autoFigId = 0
+  let autoTblId = 0
 
   const outline: OutlineItem[] = []
   const labels = new Map<string, LabelEntry>()
 
-  const floatNumber = (n: number): string => (hasChapters && chapter > 0 ? `${chapter}.${n}` : `${n}`)
+  const floatNumber = (n: number): string => (scopedFloats && chapter > 0 ? `${chapter}.${n}` : `${n}`)
 
   const prepend = (inline: Token, html: string): void => {
     const tok = new state.Token('html_inline', '', 0)
@@ -101,25 +120,38 @@ export function applyNumbering(state: StateCore, md: MarkdownIt, opts: Numbering
 
     if (tok.type === 'heading_open') {
       const inline = tokens[i + 1]
+      const text = inlineText(inline?.children)
+      const id = String(tok.attrGet('id') ?? `sec-${++autoId}`)
+      tok.attrSet('id', id)
+
+      if (i === titleIndex) {
+        // タイトルには番号を振らない。参照されたときは見出しの文言をそのまま使う。
+        outline.push({ kind: 'sec', level: 1, id, number: null, text })
+        labels.set(id, { kind: 'sec', id, ref: null, text })
+        continue
+      }
+
       const level = Number(tok.tag.slice(1))
       const depth = Math.max(1, level - topLevel + 1)
+      // 上位の見出しを飛ばして深い見出しが先に来ても「0.1」を出さないよう、
+      // 欠けている祖先の番号を 1 として埋める
+      for (let d = 0; d < depth - 1; d++) if (counters[d] === 0) counters[d] = 1
       counters[depth - 1]++
       for (let d = depth; d < counters.length; d++) counters[d] = 0
 
       const nums = counters.slice(0, depth)
-      const isChapter = hasChapters && level === 1
+      const isChapter = hasChapters && depth === 1
       if (isChapter) {
         chapter = nums[0]
-        figCount = 0
-        tblCount = 0
+        if (scopedFloats) {
+          figCount = 0
+          tblCount = 0
+        }
       }
 
       const dotted = nums.join('.')
       const heading = isChapter ? L.chapterHeading(nums[0]) : dotted
       const ref = isChapter ? L.chapterRef(nums[0]) : L.sectionRef(dotted)
-      const id = String(tok.attrGet('id') ?? `sec-${++autoId}`)
-      tok.attrSet('id', id)
-      const text = inlineText(inline?.children)
 
       outline.push({ kind: 'sec', level: depth, id, number: showHeadings ? heading : null, text })
       labels.set(id, { kind: 'sec', id, ref: showHeadings ? ref : null, text })
@@ -137,11 +169,11 @@ export function applyNumbering(state: StateCore, md: MarkdownIt, opts: Numbering
       // info の解析結果とトークン属性の両方を見る
       const info = isFence ? parseFenceInfo(tok.info) : null
       const attrId = tok.attrGet('id')?.toString() ?? null
-      const id = (isFence ? (info?.id ?? attrId) : attrId) ?? `fig-${figCount}`
+      const id = (isFence ? (info?.id ?? attrId) : attrId) ?? `fig-${++autoFigId}`
       const captionInline = isFence ? null : findCaptionInline(tokens, i + 1, 'figure_close')
       const text = isFence ? (info?.caption ?? tok.attrGet('caption')?.toString() ?? '') : inlineText(captionInline?.children)
 
-      outline.push({ kind: 'fig', level: 0, id, number: showFloats ? label : null, text })
+      if (showFloats || text) outline.push({ kind: 'fig', level: 0, id, number: showFloats ? label : null, text })
       labels.set(id, { kind: 'fig', id, ref: showFloats ? label : null, text })
 
       if (isFence) {
@@ -158,12 +190,12 @@ export function applyNumbering(state: StateCore, md: MarkdownIt, opts: Numbering
       tblCount++
       const num = floatNumber(tblCount)
       const label = L.table(num)
-      const id = String(tok.attrGet('id') ?? `tbl-${tblCount}`)
+      const id = String(tok.attrGet('id') ?? `tbl-${++autoTblId}`)
       tok.attrSet('id', id)
       const caption = tok.meta?.caption as { children: Token[] } | undefined
       const text = inlineText(caption?.children)
 
-      outline.push({ kind: 'tbl', level: 0, id, number: showFloats ? label : null, text })
+      if (showFloats || text) outline.push({ kind: 'tbl', level: 0, id, number: showFloats ? label : null, text })
       labels.set(id, { kind: 'tbl', id, ref: showFloats ? label : null, text })
 
       tok.meta = { ...(tok.meta ?? {}), number: showFloats ? label : null, id }
