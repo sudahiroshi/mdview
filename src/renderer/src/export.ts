@@ -37,6 +37,8 @@ export interface SvgSnapshot {
   markup: string
   width: number
   height: number
+  /** 敷いた背景色。透過なら null。 */
+  background: string | null
 }
 
 /**
@@ -47,31 +49,42 @@ export function snapshotSvg(fig: HTMLElement, opts: { background?: string | null
   const src = fig.querySelector('svg')
   if (!src) return null
 
-  const width = Number(fig.dataset['width']) || src.getBoundingClientRect().width
-  const height = Number(fig.dataset['height']) || src.getBoundingClientRect().height
+  let width = Number(fig.dataset['width']) || src.getBoundingClientRect().width
+  let height = Number(fig.dataset['height']) || src.getBoundingClientRect().height
 
   const clone = src.cloneNode(true) as SVGSVGElement
+
+  // viewBox があるときは、その縦横比どおりの寸法にそろえる。
+  // 端数を丸めた寸法のままだと比がわずかにずれ、書き出しの上下か左右に余白が入る。
+  const box = clone.getAttribute('viewBox')?.trim().split(/[\s,]+/).map(Number)
+  if (box && box.length === 4 && box[2] > 0 && box[3] > 0) {
+    height = (width * box[3]) / box[2]
+  }
   clone.setAttribute('xmlns', SVG_NS)
   clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
   clone.setAttribute('width', String(width))
-  clone.setAttribute('height', String(height))
+  clone.setAttribute('height', String(Math.round(height * 100) / 100))
   clone.removeAttribute('style')
   if (!clone.getAttribute('viewBox')) clone.setAttribute('viewBox', `0 0 ${width} ${height}`)
 
   if (opts.background) {
     // viewBox の原点は 0,0 とは限らないため、百分率ではなく viewBox の値で敷く
-    const vb = clone.getAttribute('viewBox')?.trim().split(/[\s,]+/).map(Number)
-    const box = vb && vb.length === 4 ? vb : [0, 0, width, height]
+    const area = box && box.length === 4 ? box : [0, 0, width, height]
     const rect = document.createElementNS(SVG_NS, 'rect')
-    rect.setAttribute('x', String(box[0]))
-    rect.setAttribute('y', String(box[1]))
-    rect.setAttribute('width', String(box[2]))
-    rect.setAttribute('height', String(box[3]))
+    rect.setAttribute('x', String(area[0]))
+    rect.setAttribute('y', String(area[1]))
+    rect.setAttribute('width', String(area[2]))
+    rect.setAttribute('height', String(area[3]))
     rect.setAttribute('fill', opts.background)
     clone.insertBefore(rect, clone.firstChild)
   }
 
-  return { markup: new XMLSerializer().serializeToString(clone), width, height }
+  return {
+    markup: new XMLSerializer().serializeToString(clone),
+    width,
+    height,
+    background: opts.background ?? null
+  }
 }
 
 export async function toPngBytes(snap: SvgSnapshot, scale: number): Promise<Uint8Array> {
@@ -91,6 +104,12 @@ export async function toPngBytes(snap: SvgSnapshot, scale: number): Promise<Uint
     canvas.height = Math.max(1, Math.round(snap.height * scale))
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('canvas を初期化できませんでした')
+    // SVG 内の矩形は viewBox の範囲しか塗れない。丸めの差で縁に透明な帯が残るのを防ぐため、
+    // 画布そのものを塗ってから描く
+    if (snap.background) {
+      ctx.fillStyle = snap.background
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+    }
     ctx.setTransform(scale, 0, 0, scale, 0, 0)
     ctx.drawImage(img, 0, 0, snap.width, snap.height)
 

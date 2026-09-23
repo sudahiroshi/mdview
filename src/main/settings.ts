@@ -13,7 +13,8 @@ const DEFAULTS: Settings = {
   theme: 'system',
   recentFiles: [],
   window: { width: 1200, height: 860 },
-  docPdf: (({ title: _title, ...rest }) => rest)(DOC_PDF_DEFAULTS)
+  docPdf: (({ title: _title, ...rest }) => rest)(DOC_PDF_DEFAULTS),
+  pngTransparent: false
 }
 
 const MAX_RECENT = 15

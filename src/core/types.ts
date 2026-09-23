@@ -23,6 +23,8 @@ export interface Settings {
   recentFiles: string[]
   window: { width: number; height: number; x?: number; y?: number }
   docPdf: DocPdfSettings
+  /** PNG 書き出しの背景を透過にするか。倍率は都度選ぶ。 */
+  pngTransparent: boolean
 }
 
 export interface SaveRequest {

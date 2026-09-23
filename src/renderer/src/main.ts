@@ -2,7 +2,7 @@ import { createParser, parse, renderTokens } from '@core/markdown'
 import { mathStyleSheet } from '@core/math'
 import { sanitizeInPlace } from '@core/sanitize'
 import { renderDiagrams } from './diagrams'
-import { showMenu } from './menu'
+import { SEPARATOR, showMenu, type MenuEntry } from './menu'
 import { openDocPdfDialog, serializeForPrint } from './doc-pdf'
 import { copyTableLatex, exportPdf, exportPng, exportSvg, saveTableLatex, snapshotSvg, toPngBytes, type ExportContext } from './export'
 import type { TableData } from '@core/table'
@@ -153,14 +153,7 @@ function attachFigureBars(host: HTMLElement): void {
     const tex = fig.dataset['tex']
     fig.append(
       bar(
-        button('PNG', (b) =>
-          showMenu(b, [
-            { label: '等倍（白背景）', run: () => run('PNG 書き出し', () => exportPng(exportCtx, fig, { scale: 1, transparent: false })) },
-            { label: '2 倍（白背景）', run: () => run('PNG 書き出し', () => exportPng(exportCtx, fig, { scale: 2, transparent: false })) },
-            { label: '3 倍（白背景）', run: () => run('PNG 書き出し', () => exportPng(exportCtx, fig, { scale: 3, transparent: false })) },
-            { label: '2 倍（背景透過）', run: () => run('PNG 書き出し', () => exportPng(exportCtx, fig, { scale: 2, transparent: true })) }
-          ])
-        ),
+        button('PNG', (b) => showMenu(b, pngMenu(fig))),
         button('PDF', () => void run('PDF 書き出し', () => exportPdf(exportCtx, fig))),
         button('SVG', () => void run('SVG 書き出し', () => exportSvg(exportCtx, fig))),
         // 数式は画像より TeX のほうが使い道が多いので、原文もコピーできるようにする
@@ -168,6 +161,46 @@ function attachFigureBars(host: HTMLElement): void {
       )
     )
   }
+}
+
+const PNG_SCALES = [1, 2, 3, 4, 6, 8, 12]
+/** これを超える PNG は書き出しに耐えないので選択肢から外す。 */
+const PNG_MAX_SIDE = 8192
+const PNG_MAX_PIXELS = 40_000_000
+
+/**
+ * PNG の倍率メニュー。
+ * 数式のように元が小さいものは高い倍率が要る一方、大きな図で 12 倍を選ぶと
+ * 数千万画素になってしまう。書き出される実寸を添えて、無理な倍率は出さない。
+ */
+function pngMenu(fig: HTMLElement): MenuEntry[] {
+  const w = Number(fig.dataset['width']) || 0
+  const h = Number(fig.dataset['height']) || 0
+  const entries: MenuEntry[] = []
+
+  for (const scale of PNG_SCALES) {
+    const pw = Math.round(w * scale)
+    const ph = Math.round(h * scale)
+    const tooBig = pw > PNG_MAX_SIDE || ph > PNG_MAX_SIDE || pw * ph > PNG_MAX_PIXELS
+    // 等倍だけは、どれだけ大きくても選べるようにしておく
+    if (w && h && tooBig && scale !== 1) continue
+    entries.push({
+      label: scale === 1 ? '等倍' : `${scale} 倍`,
+      ...(w && h ? { note: `${pw} × ${ph}` } : {}),
+      run: () =>
+        run('PNG 書き出し', () => exportPng(exportCtx, fig, { scale, transparent: settings.pngTransparent }))
+    })
+  }
+
+  entries.push(SEPARATOR, {
+    label: '背景を透過する',
+    checked: settings.pngTransparent,
+    run: async () => {
+      settings = await window.api.setSettings({ pngTransparent: !settings.pngTransparent })
+      toast(settings.pngTransparent ? 'PNG の背景を透過にしました' : 'PNG の背景を白にしました')
+    }
+  })
+  return entries
 }
 
 /**

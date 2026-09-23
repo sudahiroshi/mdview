@@ -304,6 +304,9 @@ figure.math:hover .export-bar,
 }
 
 .popup-menu button {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
   font: 12px/1.6 -apple-system, sans-serif;
   text-align: left;
   padding: 6px 10px;
@@ -314,6 +317,30 @@ figure.math:hover .export-bar,
   cursor: pointer;
 }
 .popup-menu button:hover { background: var(--surface); }
+
+/* 書き出される実寸。選ぶ手がかりになるよう右端に控えめに出す */
+.popup-menu .note {
+  margin-left: auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+
+.popup-menu hr {
+  margin: 4px 6px;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+/* 入／切を持つ項目は、左端の印の分だけ字下げして揃える */
+.popup-menu button.on,
+.popup-menu button.off { padding-left: 26px; position: relative; }
+.popup-menu button.on::before {
+  content: '✓';
+  position: absolute;
+  left: 9px;
+  color: var(--accent);
+}
 
 /* ---- 通知 ---- */
 .toast {
