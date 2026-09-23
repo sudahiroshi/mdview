@@ -11,6 +11,21 @@ export interface LatexOptions {
 
 const DEFAULTS: Required<LatexOptions> = { environment: 'table', placement: 'htbp', preamble: true }
 
+const ENTITIES: Record<string, string> = {
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&#39;': "'",
+  '&nbsp;': ' '
+}
+
+/** HTML 片からタグを落として本文だけを取り出す。 */
+function stripTags(html: string): string {
+  if (/^<br\s*\/?>$/i.test(html.trim())) return '\n'
+  return html.replace(/<[^>]*>/g, '').replace(/&(?:amp|lt|gt|quot|#39|nbsp);/g, (e) => ENTITIES[e] ?? e)
+}
+
 const ESCAPES: Record<string, string> = {
   '\\': '\\textbackslash{}',
   '{': '\\{',
@@ -82,8 +97,11 @@ export function cellToLatex(cell: Cell): string {
       case 'image':
         out.push(escapeLatex(t.content))
         break
+      case 'html_inline':
+        // 相互参照の解決結果などが混じるため、タグを外して文字列だけ残す
+        out.push(escapeLatex(stripTags(t.content)))
+        break
       default:
-        // html_inline など LaTeX に対応物がないものは中身だけ拾う
         if (t.children) out.push(cellToLatex(t.children))
     }
   }

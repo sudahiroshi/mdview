@@ -37,5 +37,48 @@
     "test": "vitest run",
     "dist": "electron-vite build && electron-builder --mac --dir",
     "pack": "electron-vite build && electron-builder --mac"
+  },
+  "build": {
+    "appId": "jp.ac.chibatech.suda.mdview",
+    "productName": "mdview",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/plantuml.jar",
+        "to": "plantuml.jar"
+      }
+    ],
+    "fileAssociations": [
+      {
+        "ext": [
+          "md",
+          "markdown",
+          "mdown",
+          "mkd"
+        ],
+        "name": "Markdown Document",
+        "role": "Viewer",
+        "rank": "Alternate"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "identity": null,
+      "darkModeSupport": true
+    }
   }
 }

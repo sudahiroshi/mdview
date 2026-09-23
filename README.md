@@ -1,0 +1,128 @@
+# mdview
+
+Markdown を「読む・見せる・部品を取り出す」ための macOS 向けビューアー。
+
+- Mermaid / Graphviz / PlantUML / 数式（KaTeX）を描画して閲覧する
+- 図を **PDF（ベクター）/ PNG / SVG** で単体書き出しする
+- 表を **LaTeX（booktabs）** に変換してコピー・保存する
+- 表示モード切替で **章・節・項の番号、図表番号、相互参照** を自動で付ける
+
+編集機能はありません。`.md` は普段のエディタで編集し、本アプリは保存を検知して自動で描き直します。
+
+## 必要なもの
+
+| | 用途 | 無いとどうなるか |
+|---|---|---|
+| Node.js 22 以降 | ビルド | ビルドできない |
+| Java 17 以降 | PlantUML の描画 | PlantUML の図だけが案内表示に置き換わる |
+| `resources/plantuml.jar` | PlantUML の描画 | 同上（`node tools/fetch-plantuml.mjs` で取得） |
+
+Mermaid・Graphviz・数式は外部コマンドを使いません（Graphviz は WebAssembly 版）。
+**図の内容を外部サーバへ送ることはありません。** PlantUML もローカルの Java で処理します。
+
+## セットアップ
+
+```sh
+npm install
+node tools/fetch-plantuml.mjs   # PlantUML を使う場合のみ
+```
+
+## 使い方
+
+```sh
+npm run dev     # 開発起動
+npm test        # 単体テスト
+npm run typecheck
+npm run dist    # dist/mac-arm64/mdview.app を作る（未署名）
+```
+
+未署名のため、初回は `mdview.app` を **右クリック → 開く** で起動してください。
+
+## 記法
+
+番号付けと相互参照のための記法は [pandoc-crossref](https://lierdakil.github.io/pandoc-crossref/) に合わせてあります。
+素の Markdown としても読めるので、他のツールに持ち出しても壊れません。
+
+````markdown
+## はじめに {#sec:intro}
+
+![システム構成](fig/arch.png){#fig:arch}
+
+```mermaid {#fig:flow caption="処理フロー"}
+graph TD; A --> B;
+```
+
+: 実験条件 {#tbl:cond}
+
+| 項目 | 値 |
+|:-----|---:|
+| N    | 10 |
+
+詳細は [@sec:intro]、構成は [@fig:arch]、条件は [@tbl:cond] を参照。
+````
+
+| 対象 | id の書き方 | キャプション |
+|---|---|---|
+| 見出し | `## 見出し {#sec:x}` | — |
+| 画像 | `![代替テキスト](a.png){#fig:x}` | 代替テキストがそのままキャプションになる |
+| 図式フェンス | 情報文字列に `{#fig:x caption="..."}` | `caption=` で指定 |
+| 表 | キャプション行に `{#tbl:x}` | 表の直前か直後の `: キャプション` 行 |
+
+- 画像だけを含む段落は `<figure>` として扱われます。
+- 参照先が見つからない `[@fig:x]` は `[?fig:x]` と赤字で表示されます。
+
+## 表示モード
+
+ツールバーで切り替え、選択は保存されます。
+
+**番号**
+
+| モード | 内容 |
+|---|---|
+| なし | 番号を付けない。参照は見出し・キャプションの文言へのリンクになる |
+| 見出しのみ | 章・節・項だけに番号を付ける |
+| 見出し + 図表 | 図表番号と相互参照も解決する（既定） |
+
+**様式**
+
+| | 章 | 節 | 図 | 表 | 節への参照 |
+|---|---|---|---|---|---|
+| 和文 | 第1章 | 1.1 | 図 1.1 | 表 1.1 | 1.1 節 |
+| 英文 | Chapter 1 | 1.1 | Figure 1.1 | Table 1.1 | Section 1.1 |
+
+図表番号は H1（章）ごとに振り直します。**H1 が無い文書では通し番号**（図 1, 図 2 …）になり、
+見出しはその文書の最上位階層を 1 から数えます。
+
+## 書き出し
+
+図や表にカーソルを重ねると、右上にボタンが出ます。
+
+| | 形式 | 備考 |
+|---|---|---|
+| 図 | PNG | 1 / 2 / 3 倍、背景は白または透過 |
+| 図 | PDF | 図の実寸ちょうどの 1 ページ。日本語もベクターのまま |
+| 図 | SVG | 再編集用 |
+| 表 | LaTeX | booktabs の `table` / `longtable`。コピーまたは `.tex` 保存 |
+
+LaTeX 側では `\usepackage{booktabs}` が必要です（出力の先頭にコメントで記載されます）。
+列揃え・TeX 特殊文字の退避・インラインコード（`\texttt`）・強調（`\textbf` / `\emph`）・
+数式の素通しに対応しています。
+
+## 構成
+
+```
+src/core/       パーサ、番号付け、相互参照、LaTeX 変換（DOM に依存しない純粋ロジック）
+src/main/       ウインドウ、ファイル IO と監視、PlantUML 実行、PDF 生成
+src/preload/    contextBridge で公開する API
+src/renderer/   描画、図式のレンダリング、書き出し UI
+tools/probe.mjs 起動中のアプリを DevTools Protocol 経由で検査する開発用スクリプト
+```
+
+`MDVIEW_DEBUG_PORT=9333 npm run dev` で起動すると、
+`MDVIEW_DEBUG_PORT=9333 node tools/probe.mjs "<JS 式>"` でレンダラの状態を確認できます。
+
+## 既知の制限
+
+- アプリのアイコンは Electron の既定のままです。
+- 文書全体を 1 つの PDF に書き出す機能はありません（図単位のみ）。
+- 未署名・未公証のため、配布するには別途 Apple の署名が必要です。

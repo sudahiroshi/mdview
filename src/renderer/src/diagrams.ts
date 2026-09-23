@@ -8,6 +8,8 @@ type Viz = Awaited<ReturnType<typeof vizInstance>>
 let viz: Promise<Viz> | null = null
 /** 描画済み SVG の記憶。表示モードを切り替えるたびに mermaid を回し直さないため。 */
 const svgCache = new Map<string, string>()
+/** 文書を渡り歩くうちに際限なく溜まらないよう上限を設ける。 */
+const CACHE_LIMIT = 200
 let mermaidReady = false
 let seq = 0
 
@@ -44,6 +46,7 @@ async function toSvg(block: DiagramBlock): Promise<string> {
   const hit = svgCache.get(key)
   if (hit !== undefined) return hit
   const svg = await renderSvg(block)
+  if (svgCache.size >= CACHE_LIMIT) svgCache.delete(svgCache.keys().next().value as string)
   svgCache.set(key, svg)
   return svg
 }

@@ -97,3 +97,12 @@ describe('tableToLatex', () => {
     expect(toLatex(SAMPLE, { preamble: true })).toContain('\\usepackage{booktabs}')
   })
 })
+
+describe('キャプション内の相互参照', () => {
+  it('解決済みリンクはタグを外して文言だけ残す', () => {
+    const { env } = renderMd('# 章 {#sec:a}\n\n: [@sec:a] の条件 {#tbl:x}\n\n| a |\n|---|\n| 1 |\n')
+    const l = tableToLatex([...env.tables.values()][0], { preamble: false })
+    expect(l).toContain('\\caption{第1章 の条件}')
+    expect(l).not.toContain('<a')
+  })
+})

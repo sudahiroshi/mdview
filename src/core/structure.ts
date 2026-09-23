@@ -72,10 +72,13 @@ export function tableCaptions(md: MarkdownIt): void {
       if (taken) continue
 
       // 直後の段落を見る
-      const close = t.indexOf(
-        t.slice(i).find((x) => x.type === 'table_close') as Token,
-        i
-      )
+      let close = -1
+      for (let j = i + 1; j < t.length; j++) {
+        if (t[j].type === 'table_close') {
+          close = j
+          break
+        }
+      }
       if (close > 0 && t[close + 1]?.type === 'paragraph_open' && t[close + 2]?.type === 'inline' && t[close + 3]?.type === 'paragraph_close') {
         if (attachCaption(t[i], t[close + 1], t[close + 2])) t.splice(close + 1, 3)
       }
