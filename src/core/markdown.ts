@@ -4,6 +4,8 @@ import texmath from 'markdown-it-texmath'
 import katex from 'katex'
 import { isExternalUrl, resolveFromDoc, assetUrl } from './paths.js'
 import { parseFenceInfo, type DiagramKind, diagramKindOf } from './fence.js'
+import { implicitFigures, tableCaptions } from './structure.js'
+import { applyNumbering, type NumberingOptions, type OutlineItem, type LabelEntry } from './numbering.js'
 
 export interface DiagramBlock {
   kind: DiagramKind
@@ -17,6 +19,11 @@ export interface RenderEnv {
   docDir: string
   /** 図式ブロックの原文。HTML には添字だけを埋め、実体はここから取り出す。 */
   diagrams: DiagramBlock[]
+  /** 番号付けの設定。core ルールから参照する。 */
+  numbering: NumberingOptions
+  /** 番号付けの結果（アウトラインと参照表）。 */
+  outline: OutlineItem[]
+  labels: Map<string, LabelEntry>
   [key: string | symbol]: unknown
 }
 
@@ -86,14 +93,31 @@ function diagramFences(md: MarkdownIt): void {
     const id = info.id ?? token.attrGet('id')?.toString() ?? null
     const caption = info.caption ?? token.attrGet('caption')?.toString() ?? null
     const index = list.push({ kind, code: token.content, id, caption }) - 1
-    const idAttr = id ? ` id="${md.utils.escapeHtml(id)}"` : ''
+    const meta = token.meta as { number?: string | null; id?: string } | undefined
+    const figId = meta?.id ?? id
+    const idAttr = figId ? ` id="${md.utils.escapeHtml(figId)}"` : ''
+    const num = meta?.number ? `<span class="num num-fig">${md.utils.escapeHtml(meta.number)}</span> ` : ''
+    const capBody = caption ? md.utils.escapeHtml(caption) : ''
     return (
       `<figure class="diagram" data-diagram="${index}" data-kind="${kind}"${idAttr}>` +
       `<div class="diagram-body" role="img" aria-label="${md.utils.escapeHtml(caption ?? kind)}">` +
       `<span class="diagram-pending">描画中…</span></div>` +
-      (caption ? `<figcaption>${md.utils.escapeHtml(caption)}</figcaption>` : '') +
+      (num || capBody ? `<figcaption>${num}${capBody}</figcaption>` : '') +
       `</figure>\n`
     )
+  }
+}
+
+/** table_open の直後に caption 要素を出力する（HTML では caption は table の先頭に置く）。 */
+function tableCaptionRenderer(md: MarkdownIt): void {
+  md.renderer.rules.table_open = (tokens, idx, options, env, self) => {
+    const token = tokens[idx]
+    const meta = token.meta as { caption?: { children: Token[] }; number?: string | null } | undefined
+    const html = self.renderToken(tokens, idx, options)
+    if (!meta?.caption && !meta?.number) return html
+    const num = meta.number ? `<span class="num num-tbl">${md.utils.escapeHtml(meta.number)}</span> ` : ''
+    const body = meta.caption ? md.renderer.renderInline(meta.caption.children, options, env) : ''
+    return `${html}<caption>${num}${body}</caption>`
   }
 }
 
@@ -121,7 +145,17 @@ export function createParser(): MarkdownIt {
     katexOptions: { throwOnError: false, strict: false }
   })
   headingIds(md)
+  implicitFigures(md)
+  tableCaptions(md)
+  md.core.ruler.push('mdview_numbering', (state) => {
+    const env = state.env as RenderEnv
+    const result = applyNumbering(state, md, env.numbering)
+    env.outline = result.outline
+    env.labels = result.labels
+    return true
+  })
   diagramFences(md)
+  tableCaptionRenderer(md)
   localImages(md)
   externalLinks(md)
   return md
@@ -132,8 +166,8 @@ export interface ParsedDoc {
   env: RenderEnv
 }
 
-export function parse(md: MarkdownIt, source: string, docDir: string): ParsedDoc {
-  const env: RenderEnv = { docDir, diagrams: [] }
+export function parse(md: MarkdownIt, source: string, docDir: string, numbering: NumberingOptions): ParsedDoc {
+  const env: RenderEnv = { docDir, diagrams: [], numbering, outline: [], labels: new Map() }
   return { tokens: md.parse(source, env), env }
 }
 

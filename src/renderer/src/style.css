@@ -209,3 +209,31 @@ figure.image > figcaption {
 .doc eq { font-size: 1em; }
 .doc section.eq { margin: 1.2em 0; overflow-x: auto; }
 .katex-display { margin: 0; }
+
+/* ---- 番号と相互参照 ---- */
+.doc .num { color: var(--muted); font-variant-numeric: tabular-nums; }
+.doc h1 .num, .doc h2 .num, .doc h3 .num { color: inherit; }
+
+.doc .xref { text-decoration: none; border-bottom: 1px dotted currentColor; }
+
+.doc .xref-missing {
+  color: #b3261e;
+  background: #fff3f2;
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
+.doc table caption {
+  caption-side: top;
+  text-align: left;
+  padding: 0 0 6px;
+  font-size: 0.9em;
+  color: var(--muted);
+}
+
+.doc figcaption:empty { display: none; }
+
+/* 図表を参照して飛んできたときに位置が分かるようにする */
+.doc figure, .doc table { scroll-margin-top: 16px; }
+.doc :target > figcaption,
+.doc :target > caption { color: var(--fg); }

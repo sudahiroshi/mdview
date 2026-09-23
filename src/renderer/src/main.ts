@@ -2,6 +2,7 @@ import 'katex/dist/katex.min.css'
 import { createParser, parse, renderTokens } from '@core/markdown'
 import { sanitizeInPlace } from '@core/sanitize'
 import { renderDiagrams } from './diagrams'
+import type { OutlineItem } from '@core/numbering'
 import type { DocPayload, Settings } from '@core/types'
 
 const md = createParser()
@@ -48,7 +49,7 @@ function render(next: DocPayload | null, opts: { keepScroll?: boolean } = {}): v
     return
   }
 
-  const parsed = parse(md, next.content, next.dir)
+  const parsed = parse(md, next.content, next.dir, { mode: settings.numberMode, style: settings.numberStyle })
   const host = document.createElement('div')
   host.className = 'doc'
   host.innerHTML = renderTokens(md, parsed)
@@ -57,7 +58,7 @@ function render(next: DocPayload | null, opts: { keepScroll?: boolean } = {}): v
   el.content.replaceChildren(host)
   el.title.textContent = next.path.replace(/^.*\//, '')
   document.title = `${el.title.textContent} — mdview`
-  buildOutline(host)
+  buildOutline(parsed.env.outline)
   el.content.scrollTop = scroll
 
   void renderDiagrams(host, parsed.env.diagrams).then(() => {
@@ -67,22 +68,29 @@ function render(next: DocPayload | null, opts: { keepScroll?: boolean } = {}): v
   })
 }
 
-function buildOutline(host: HTMLElement): void {
-  const items = host.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6')
+function buildOutline(items: OutlineItem[]): void {
   const frag = document.createDocumentFragment()
-  for (const h of items) {
+  for (const item of items) {
     const a = document.createElement('a')
-    a.href = `#${h.id}`
-    a.className = `lv${h.tagName[1]}`
-    a.textContent = h.textContent
+    a.href = `#${item.id}`
+    a.className = item.kind === 'sec' ? `lv${Math.min(item.level, 6)}` : item.kind
+    a.textContent = [item.number, item.text].filter(Boolean).join(' ') || item.id
     a.addEventListener('click', (e) => {
       e.preventDefault()
-      h.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      document.getElementById(item.id)?.scrollIntoView({ block: 'start', behavior: 'smooth' })
     })
     frag.append(a)
   }
   el.outline.replaceChildren(frag)
 }
+
+/** 本文中の相互参照リンクを、ページ内スクロールとして処理する。 */
+el.content.addEventListener('click', (e) => {
+  const a = (e.target as HTMLElement).closest?.('a.xref') as HTMLAnchorElement | null
+  if (!a) return
+  e.preventDefault()
+  document.getElementById(decodeURIComponent(a.getAttribute('href')!.slice(1)))?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+})
 
 /* ---------------- ファイルを開く ---------------- */
 
