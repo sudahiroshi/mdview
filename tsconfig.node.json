@@ -13,5 +13,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src/main/**/*.ts", "src/preload/**/*.ts", "src/core/types.ts", "src/core/pdf.ts", "electron.vite.config.ts"]
+  "include": ["src/main/**/*.ts", "src/preload/**/*.ts", "src/core/types.ts", "src/core/pdf.ts", "src/core/settings.ts", "electron.vite.config.ts"]
 }

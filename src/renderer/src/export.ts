@@ -1,5 +1,6 @@
 import { tableToLatex, type LatexOptions } from '@core/table2latex'
 import type { TableData } from '@core/table'
+import { platform } from '../../platform'
 import type { SaveRequest } from '@core/types'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -155,7 +156,7 @@ export async function exportPng(
   const snap = snapshotSvg(fig, { background: backgroundOf(opts) })
   if (!snap) throw new Error('書き出せる図がありません')
   const bytes = await toPngBytes(snap, opts.scale)
-  return window.api.save(request(ctx, figureStem(fig), 'png', 'PNG 画像'), bytes)
+  return platform.save(request(ctx, figureStem(fig), 'png', 'PNG 画像'), bytes)
 }
 
 export interface BackgroundOption {
@@ -174,7 +175,7 @@ function backgroundOf(opts: BackgroundOption): string | null {
 export async function exportPdf(ctx: ExportContext, fig: HTMLElement): Promise<string | null> {
   const snap = snapshotSvg(fig, { background: '#ffffff' })
   if (!snap) throw new Error('書き出せる図がありません')
-  return window.api.savePdf(request(ctx, figureStem(fig), 'pdf', 'PDF 文書'), snap.markup, snap.width, snap.height)
+  return platform.savePdf(request(ctx, figureStem(fig), 'pdf', 'PDF 文書'), snap.markup, snap.width, snap.height)
 }
 
 export async function exportSvg(
@@ -184,11 +185,11 @@ export async function exportSvg(
 ): Promise<string | null> {
   const snap = snapshotSvg(fig, { background: backgroundOf(opts) })
   if (!snap) throw new Error('書き出せる図がありません')
-  return window.api.save(request(ctx, figureStem(fig), 'svg', 'SVG 画像'), snap.markup)
+  return platform.save(request(ctx, figureStem(fig), 'svg', 'SVG 画像'), snap.markup)
 }
 
 export async function copyTableLatex(table: TableData, options: LatexOptions): Promise<void> {
-  await window.api.copyText(tableToLatex(table, options))
+  await platform.copyText(tableToLatex(table, options))
 }
 
 export async function saveTableLatex(
@@ -196,5 +197,5 @@ export async function saveTableLatex(
   table: TableData,
   options: LatexOptions
 ): Promise<string | null> {
-  return window.api.save(request(ctx, table.id, 'tex', 'LaTeX ソース'), tableToLatex(table, options))
+  return platform.save(request(ctx, table.id, 'tex', 'LaTeX ソース'), tableToLatex(table, options))
 }

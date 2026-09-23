@@ -1,7 +1,10 @@
 import { createParser, parse, renderTokens } from '@core/markdown'
 import { mathStyleSheet } from '@core/math'
+import { assetFolderGrant, platform } from '../../platform'
 import { sanitizeInPlace } from '@core/sanitize'
 import { renderDiagrams } from './diagrams'
+import { resolveImages } from './images'
+import { bootWeb } from './web-boot'
 import { showMenu, type MenuEntry } from './menu'
 import { openDocPdfDialog, serializeForPrint } from './doc-pdf'
 import { copyTableLatex, exportPdf, exportPng, exportSvg, saveTableLatex, snapshotSvg, toPngBytes, type ExportContext } from './export'
@@ -52,7 +55,8 @@ function render(next: DocPayload | null, opts: { keepScroll?: boolean } = {}): v
   el.docPdf.disabled = !next
 
   if (!next) {
-    el.content.innerHTML = '<div class="empty"><p>Markdown ファイルをドロップ、または <kbd>⌘O</kbd> で開いてください。</p></div>'
+    const note = platform.limitation ? `<p class="limitation">${platform.limitation}</p>` : ''
+    el.content.innerHTML = `<div class="empty"><div><p>Markdown ファイルをドロップ、または <kbd>⌘O</kbd> で開いてください。</p>${note}</div></div>`
     el.outline.replaceChildren()
     el.title.textContent = ''
     return
@@ -72,6 +76,10 @@ function render(next: DocPayload | null, opts: { keepScroll?: boolean } = {}): v
   document.title = `${el.title.textContent} — mdview`
   docTitle = parsed.env.docTitle
   buildOutline(parsed.env.outline)
+  void resolveImages(host, next.dir).then(({ unresolved }) => {
+    if (gen !== generation) return
+    showAssetNotice(unresolved)
+  })
   el.content.scrollTop = scroll
 
   void renderDiagrams(host, parsed.env.diagrams).then(() => {
@@ -106,6 +114,38 @@ el.content.addEventListener('click', (e) => {
   e.preventDefault()
   document.getElementById(decodeURIComponent(a.getAttribute('href')!.slice(1)))?.scrollIntoView({ block: 'start', behavior: 'smooth' })
 })
+
+/**
+ * 画像が読めなかったときの案内。
+ * ブラウザ版は相対パスの画像を読むのにフォルダの許可が要るので、その場で頼めるようにする。
+ */
+function showAssetNotice(unresolved: number): void {
+  document.getElementById('asset-notice')?.remove()
+  if (unresolved === 0) return
+
+  const grant = assetFolderGrant()
+  const bar = document.createElement('div')
+  bar.id = 'asset-notice'
+  bar.className = 'notice'
+  const text = document.createElement('span')
+  text.textContent = grant
+    ? `画像 ${unresolved} 件を読み込めません。画像のあるフォルダを許可してください。`
+    : `画像 ${unresolved} 件を読み込めません。このブラウザではフォルダを扱えません。`
+  bar.append(text)
+
+  if (grant) {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.textContent = 'フォルダを許可…'
+    b.addEventListener('click', () => {
+      void grant().then((ok) => {
+        if (ok && doc) render(doc, { keepScroll: true })
+      })
+    })
+    bar.append(b)
+  }
+  el.content.prepend(bar)
+}
 
 /* ---------------- 書き出し ---------------- */
 
@@ -159,7 +199,7 @@ function attachFigureBars(host: HTMLElement): void {
           void run('SVG 書き出し', () => exportSvg(exportCtx, fig, { transparent: settings.exportTransparent }))
         ),
         // 数式は画像より TeX のほうが使い道が多いので、原文もコピーできるようにする
-        ...(tex ? [button('LaTeX', () => void run('LaTeX', () => window.api.copyText(tex)))] : []),
+        ...(tex ? [button('LaTeX', () => void run('LaTeX', () => platform.copyText(tex)))] : []),
         backgroundButton(host)
       )
     )
@@ -212,6 +252,10 @@ function pdfButton(fig: HTMLElement): HTMLButtonElement {
     void (async () => {
       try {
         const saved = await exportPdf(exportCtx, fig)
+        if (!platform.capabilities.directPdf) {
+          toast('印刷ダイアログを開きました。送り先に「PDF として保存」を選んでください。')
+          return
+        }
         if (saved === null) return
         const name = saved.replace(/^.*\//, '')
         toast(settings.exportTransparent ? `保存しました: ${name}（PDF は白背景）` : `保存しました: ${name}`)
@@ -231,7 +275,7 @@ function backgroundLabel(): string {
 function backgroundButton(host: HTMLElement): HTMLButtonElement {
   const b = button(backgroundLabel(), () => {
     void (async () => {
-      settings = await window.api.setSettings({ exportTransparent: !settings.exportTransparent })
+      settings = await platform.setSettings({ exportTransparent: !settings.exportTransparent })
       // 文書中のボタンの表示だけを更新する。バーごと作り直すと、
       // 同じ入れ物にいる表の LaTeX ボタンまで巻き添えで消えてしまう
       for (const t of host.querySelectorAll('.export-bar button.toggle')) t.textContent = backgroundLabel()
@@ -296,10 +340,10 @@ function requestDocPdf(): void {
     docTitle,
     settings,
     persist: async (patch) => {
-      settings = await window.api.setSettings(patch)
+      settings = await platform.setSettings(patch)
     },
     save: (options, html) =>
-      window.api.saveDocumentPdf(
+      platform.saveDocumentPdf(
         { defaultName: `${base}.pdf`, dir: current.dir, extensions: ['pdf'], filterName: 'PDF 文書' },
         html,
         options
@@ -309,25 +353,27 @@ function requestDocPdf(): void {
 }
 
 el.docPdf.addEventListener('click', requestDocPdf)
-window.api.onRequestDocPdf(requestDocPdf)
+platform.onRequestDocPdf(requestDocPdf)
 
 /* ---------------- ファイルを開く ---------------- */
 
+/** パス指定で開く（デスクトップ版のみ。開発時の検証でも使う）。 */
 async function openPath(path: string): Promise<void> {
+  if (!platform.loadPath) return
   try {
-    render(await window.api.load(path))
+    render(await platform.loadPath(path))
   } catch (e) {
     console.error(e)
-    alert(`開けません: ${path}\n${(e as Error).message}`)
+    toast(`開けません: ${(e as Error).message}`, 'error')
   }
 }
 
 el.open.addEventListener('click', () => {
-  void window.api.openDialog().then((d) => d && render(d))
+  void platform.openDialog().then((d) => d && render(d))
 })
 
-window.api.onDocOpened((d) => render(d))
-window.api.onDocChanged((d) => render(d, { keepScroll: d.path === doc?.path }))
+platform.onDocOpened((d) => render(d))
+platform.onDocChanged((d) => render(d, { keepScroll: d.path === doc?.path }))
 
 document.addEventListener('dragover', (e) => {
   e.preventDefault()
@@ -337,13 +383,13 @@ document.addEventListener('dragover', (e) => {
 document.addEventListener('drop', (e) => {
   e.preventDefault()
   const file = e.dataTransfer?.files?.[0]
-  if (file) void openPath(window.api.pathForFile(file))
+  if (file) void platform.openDropped(file).then((d) => d && render(d))
 })
 
 /* ---------------- 設定 UI ---------------- */
 
 async function updateSettings(patch: Partial<Settings>): Promise<void> {
-  settings = await window.api.setSettings(patch)
+  settings = await platform.setSettings(patch)
   applyTheme()
   if (doc) render(doc, { keepScroll: true })
 }
@@ -353,16 +399,21 @@ el.numberStyle.addEventListener('change', () => void updateSettings({ numberStyl
 el.theme.addEventListener('change', () => void updateSettings({ theme: el.theme.value as Settings['theme'] }))
 
 async function init(): Promise<void> {
+  if (platform.kind === 'web') {
+    bootWeb(() => void platform.openDialog().then((d) => d && render(d)))
+  }
+
   // liteAdaptor を使っていると MathJax が自分でスタイルを入れないので、ここで一度だけ入れる
   const mathCss = document.createElement('style')
   mathCss.textContent = mathStyleSheet()
   document.head.append(mathCss)
 
-  settings = await window.api.getSettings()
+  settings = await platform.getSettings()
   el.numberMode.value = settings.numberMode
   el.numberStyle.value = settings.numberStyle
   el.theme.value = settings.theme
   applyTheme()
+  if (!doc) render(null)
 }
 
 void init()
@@ -372,6 +423,7 @@ if (import.meta.env.DEV) {
   ;(window as unknown as Record<string, unknown>)['__mdview'] = {
     open: openPath,
     render,
+    platform,
     exportCtx,
     snapshotSvg,
     toPngBytes,

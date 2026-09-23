@@ -4,3 +4,5 @@ dist/
 .DS_Store
 *.log
 *.tsbuildinfo
+dist-web/
+test/fixtures/*.pdf

@@ -24,6 +24,12 @@ const VARIANTS = [16, 32, 128, 256, 512].flatMap((n) => [
   { name: `icon_${n}x${n}@2x.png`, px: n * 2 }
 ])
 
+/** PWA の manifest が参照するアイコン。 */
+const WEB_ICONS = [
+  { path: join(root, 'web', 'public', 'icon-192.png'), px: 192 },
+  { path: join(root, 'web', 'public', 'icon-512.png'), px: 512 }
+]
+
 app.disableHardwareAcceleration()
 
 app.whenReady().then(async () => {
@@ -40,26 +46,33 @@ app.whenReady().then(async () => {
     await rm(iconset, { recursive: true, force: true })
     await mkdir(iconset, { recursive: true })
 
-    for (const v of VARIANTS) {
-      const dataUrl = await win.webContents.executeJavaScript(`(async () => {
+    const rasterize = (px) =>
+      win.webContents.executeJavaScript(`(async () => {
         const url = URL.createObjectURL(new Blob([${JSON.stringify(svg)}], { type: 'image/svg+xml;charset=utf-8' }))
         try {
           const img = new Image()
-          img.width = ${v.px}
-          img.height = ${v.px}
+          img.width = ${px}
+          img.height = ${px}
           await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error('SVG を読み込めません')); img.src = url })
           const c = document.createElement('canvas')
-          c.width = ${v.px}; c.height = ${v.px}
-          c.getContext('2d').drawImage(img, 0, 0, ${v.px}, ${v.px})
+          c.width = ${px}; c.height = ${px}
+          c.getContext('2d').drawImage(img, 0, 0, ${px}, ${px})
           return c.toDataURL('image/png')
         } finally { URL.revokeObjectURL(url) }
       })()`)
-      await writeFile(join(iconset, v.name), Buffer.from(dataUrl.split(',')[1], 'base64'))
+
+    for (const v of VARIANTS) {
+      await writeFile(join(iconset, v.name), Buffer.from((await rasterize(v.px)).split(',')[1], 'base64'))
     }
 
     await run('iconutil', ['-c', 'icns', iconset, '-o', outIcns])
     await rm(iconset, { recursive: true, force: true })
     console.log(`書き出しました: ${outIcns}`)
+
+    for (const icon of WEB_ICONS) {
+      await writeFile(icon.path, Buffer.from((await rasterize(icon.px)).split(',')[1], 'base64'))
+      console.log(`書き出しました: ${icon.path}`)
+    }
   } catch (e) {
     console.error('アイコンの生成に失敗しました:', e)
     app.exit(1)

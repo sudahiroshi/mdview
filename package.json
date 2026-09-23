@@ -36,7 +36,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "dist": "electron-vite build && electron-builder --mac --dir",
-    "pack": "electron-vite build && electron-builder --mac"
+    "pack": "electron-vite build && electron-builder --mac",
+    "web:dev": "vite --config vite.config.web.ts",
+    "web:build": "tsc --noEmit -p tsconfig.web.json && vite build --config vite.config.web.ts",
+    "web:preview": "vite preview --config vite.config.web.ts"
   },
   "build": {
     "appId": "jp.ac.chibatech.suda.mdview",

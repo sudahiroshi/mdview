@@ -1,3 +1,4 @@
+import { platform } from '../../platform'
 import type { Align, DocPdfOptions, PageSize, Placement } from '@core/pdf'
 import type { DocPdfSettings, Settings } from '@core/types'
 
@@ -103,7 +104,11 @@ export function openDocPdfDialog(req: DocPdfRequest): void {
     try {
       const saved = await req.save(options, serializeForPrint(req.host))
       el.dialog.close()
-      if (saved) req.notify(`保存しました: ${saved.replace(/^.*\//, '')}`)
+      if (!platform.capabilities.directPdf) {
+        req.notify('印刷ダイアログを開きました。送り先に「PDF として保存」を選んでください。')
+      } else if (saved) {
+        req.notify(`保存しました: ${saved.replace(/^.*\//, '')}`)
+      }
     } catch (err) {
       req.notify(`PDF の書き出しに失敗しました: ${(err as Error).message}`, 'error')
     } finally {

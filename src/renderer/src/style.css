@@ -452,3 +452,55 @@ figure.math:hover .export-bar,
   border-style: dashed;
 }
 .export-bar button.toggle:hover { color: var(--fg); }
+
+/* ---- 画像が読めないときの案内 ---- */
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 760px;
+  margin: 0 auto 20px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--fg);
+  background: #fff8e1;
+  border: 1px solid #f0dca0;
+  border-radius: 8px;
+}
+:root[data-theme='dark'] .notice { background: #3a3323; border-color: #5c5030; }
+
+.notice button {
+  margin-left: auto;
+  font: inherit;
+  padding: 4px 10px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* 読み込めなかった画像の代替。壊れアイコンより、何が足りないかが分かるほうがよい */
+.doc .image-missing {
+  display: inline-block;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+}
+
+.empty .limitation {
+  max-width: 34em;
+  margin: 12px auto 0;
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.7;
+  text-align: left;
+  color: var(--fg);
+  background: #fff8e1;
+  border: 1px solid #f0dca0;
+  border-radius: 8px;
+}
+:root[data-theme='dark'] .empty .limitation { background: #3a3323; border-color: #5c5030; }

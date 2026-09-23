@@ -15,5 +15,5 @@
     "paths": { "@core/*": ["./src/core/*"] },
     "noEmit": true
   },
-  "include": ["src/renderer/**/*.ts", "src/core/**/*.ts", "src/types/**/*.d.ts", "src/preload/*.d.ts", "test/**/*.ts"]
+  "include": ["src/renderer/**/*.ts", "src/core/**/*.ts", "src/platform/**/*.ts", "src/types/**/*.d.ts", "src/preload/*.d.ts", "test/**/*.ts"]
 }

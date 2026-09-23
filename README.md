@@ -166,14 +166,46 @@ LaTeX 側では `\usepackage{booktabs}` が必要です（出力の先頭にコ�
 列揃え・TeX 特殊文字の退避・インラインコード（`\texttt`）・強調（`\textbf` / `\emph`）・
 数式の素通しに対応しています。
 
+## ブラウザ版（PWA）
+
+同じ画面のコードをそのままブラウザでも動かせます。
+
+```sh
+npm run web:dev       # 開発用（http://localhost:5174）
+npm run web:build     # dist-web/ に書き出す
+npm run web:preview   # 書き出したものを確認（http://localhost:4174）
+```
+
+Service Worker でアプリ本体をキャッシュするので、一度開けばオフラインでも起動します。
+インストールすると独立したウインドウで動きます。
+
+### デスクトップ版との違い
+
+| | デスクトップ版 | ブラウザ版 |
+|---|---|---|
+| ファイルを開く | ダイアログ / ドロップ / Finder から | ダイアログ / ドロップ |
+| 相対パスの画像 | そのまま読める | **画像のあるフォルダを一度許可する**（案内が出る） |
+| 保存を検知して再描画 | OS の通知 | 0.8 秒ごとの確認（ダイアログで開いた場合のみ） |
+| PNG / SVG の保存 | 保存先を選ぶ | 保存先を選ぶ |
+| PDF | ボタン一発で保存 | **印刷ダイアログで「PDF として保存」を選ぶ** |
+| 文書名・ページ番号 | printToPDF の雛形 | CSS の `@page` マージンボックス（結果は同じ） |
+
+**対応ブラウザは Chrome / Edge です。** Safari と Firefox はローカルファイルを扱う API
+（File System Access API）を実装していないため、ファイル選択は `<input type=file>` に、
+保存はダウンロードに落ちます。相対パスの画像と自動リロードは使えません。
+その場合は画面にその旨を表示します。
+
 ## 構成
 
 ```
-src/core/       パーサ、番号付け、相互参照、LaTeX 変換（DOM に依存しない純粋ロジック）
-src/main/       ウインドウ、ファイル IO と監視、PlantUML 実行、PDF 生成
-src/preload/    contextBridge で公開する API
-src/renderer/   描画、図式のレンダリング、書き出し UI
+src/core/       パーサ、番号付け、相互参照、LaTeX 変換、数式（環境に依存しない純粋ロジック）
+src/platform/   環境ごとの差を吸収する層。Electron 版とブラウザ版の 2 実装
+src/main/       ウインドウ、ファイル IO と監視、PDF 生成（デスクトップ版のみ）
+src/preload/    contextBridge で公開する API（デスクトップ版のみ）
+src/renderer/   描画、図式のレンダリング、書き出し UI（両方で共有）
+web/public/     PWA の manifest・Service Worker・アイコン
 tools/probe.mjs 起動中のアプリを DevTools Protocol 経由で検査する開発用スクリプト
+tools/open-web.mjs ブラウザ版を素の Chromium ウインドウで開く確認用スクリプト
 ```
 
 `MDVIEW_DEBUG_PORT=9333 npm run dev` で起動すると、

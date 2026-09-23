@@ -4,7 +4,7 @@ import attrs from 'markdown-it-attrs'
 // katex は使わなくても依存として残しておく必要がある（mermaid も内部で使っている）。
 // 実際の数式描画は下で渡す mathEngine（MathJax）が行う。
 import texmath from 'markdown-it-texmath'
-import { isExternalUrl, resolveFromDoc, assetUrl } from './paths.js'
+import { isExternalUrl } from './paths.js'
 import { parseFenceInfo, type DiagramKind, diagramKindOf } from './fence.js'
 import { implicitFigures, tableCaptions } from './structure.js'
 import { applyNumbering, type NumberingOptions, type OutlineItem, type LabelEntry } from './numbering.js'
@@ -69,16 +69,19 @@ function headingIds(md: MarkdownIt): void {
   })
 }
 
-/** 相対パスの画像をメインプロセスが配信できる mdv-asset URL に差し替える。 */
+/**
+ * 相対パスの画像は、ここでは URL を決めない。
+ * デスクトップ版は独自スキーム、ブラウザ版は objectURL と、実際の URL が環境で違うため、
+ * 元のパスだけ data-src に残して、描画後に環境側が差し替える。
+ */
 function localImages(md: MarkdownIt): void {
   const base = md.renderer.rules.image
   md.renderer.rules.image = (tokens, idx, options, env, self) => {
-    const docDir = (env as Partial<RenderEnv> | undefined)?.docDir
     const token = tokens[idx]
     const src = token.attrGet('src')?.toString()
-    if (src && !isExternalUrl(src) && docDir) {
-      token.attrSet('src', assetUrl(resolveFromDoc(docDir, src)))
+    if (src && !isExternalUrl(src)) {
       token.attrSet('data-src', src)
+      token.attrs = (token.attrs ?? []).filter((a) => a[0] !== 'src')
     }
     return base ? base(tokens, idx, options, env, self) : self.renderToken(tokens, idx, options)
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DOC_PDF_DEFAULTS, buildTemplates, contentBoxPx, marginsInInches, pageSizeFor, type DocPdfOptions } from '@core/pdf'
+import { DOC_PDF_DEFAULTS, buildPageCss, buildTemplates, contentBoxPx, marginsInInches, pageSizeFor, type DocPdfOptions } from '@core/pdf'
 
 const opts = (patch: Partial<DocPdfOptions> = {}): DocPdfOptions => ({
   ...DOC_PDF_DEFAULTS,
@@ -110,5 +110,38 @@ describe('本文が載る領域', () => {
     const a5 = contentBoxPx(opts({ pageSize: 'A5' }))
     expect(a5.width).toBeLessThan(a4.width)
     expect(a5.height).toBeLessThan(a4.height)
+  })
+})
+
+describe('ブラウザ印刷用の @page 規則', () => {
+  it('文書名とページ番号を指定のマージンボックスへ置く', () => {
+    const css = buildPageCss(opts({ titlePlacement: 'header', titleAlign: 'left', pageNumberPlacement: 'footer', pageNumberAlign: 'center' }))
+    expect(css).toContain('@top-left { content: "実験レポート"')
+    expect(css).toContain('@bottom-center { content: counter(page)')
+  })
+
+  it('総ページ数を添えられる', () => {
+    expect(buildPageCss(opts({ showTotalPages: true }))).toContain('counter(page) " / " counter(pages)')
+  })
+
+  it('同じ枠に重なるときは並べて置く', () => {
+    const css = buildPageCss(opts({ titlePlacement: 'footer', titleAlign: 'right', pageNumberPlacement: 'footer', pageNumberAlign: 'right' }))
+    expect(css).toContain('@bottom-right { content: "実験レポート" " " counter(page)')
+  })
+
+  it('用紙と余白を出す。B5 は実寸に直す', () => {
+    expect(buildPageCss(opts({ pageSize: 'A4', marginMm: 20 }))).toContain('size: A4;')
+    expect(buildPageCss(opts({ pageSize: 'B5' }))).toContain('size: 182mm 257mm;')
+    expect(buildPageCss(opts({ marginMm: 20 }))).toContain('margin: 20.00mm 20.00mm 20.00mm 20.00mm;')
+  })
+
+  it('文書名の引用符をエスケープする', () => {
+    expect(buildPageCss(opts({ title: 'a"b\\c' }))).toContain('content: "a\\"b\\\\c"')
+  })
+
+  it('どちらも出さないならマージンボックスを作らない', () => {
+    const css = buildPageCss(opts({ titlePlacement: 'none', pageNumberPlacement: 'none' }))
+    expect(css).not.toContain('@top-')
+    expect(css).not.toContain('@bottom-')
   })
 })

@@ -134,3 +134,54 @@ export function marginsInInches(o: DocPdfOptions): { top: number; bottom: number
     right: base
   }
 }
+
+/** CSS の文字列リテラルとして安全な形にする。 */
+function cssString(text: string): string {
+  return `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+}
+
+const MARGIN_BOX: Record<'header' | 'footer', Record<Align, string>> = {
+  header: { left: '@top-left', center: '@top-center', right: '@top-right' },
+  footer: { left: '@bottom-left', center: '@bottom-center', right: '@bottom-right' }
+}
+
+/**
+ * ブラウザで印刷するときの @page 規則を組み立てる。
+ *
+ * Electron 版は printToPDF のヘッダー・フッター雛形を使うが、ブラウザには
+ * その入口が無い。代わりに CSS のマージンボックスと counter(page) を使う
+ * （Chromium は 131 以降で対応）。16 個のマージンボックスが
+ * 「上下 × 左中右」の指定にそのまま対応する。
+ */
+export function buildPageCss(o: DocPdfOptions): string {
+  const boxes = new Map<string, string[]>()
+  const add = (placement: Placement, align: Align, content: string): void => {
+    if (placement === 'none') return
+    const key = MARGIN_BOX[placement][align]
+    boxes.set(key, [...(boxes.get(key) ?? []), content])
+  }
+
+  if (o.title.trim()) add(o.titlePlacement, o.titleAlign, cssString(o.title.trim()))
+  add(
+    o.pageNumberPlacement,
+    o.pageNumberAlign,
+    o.showTotalPages ? 'counter(page) " / " counter(pages)' : 'counter(page)'
+  )
+
+  const m = marginsInInches(o)
+  const mm = (inches: number): string => `${(inches * MM_PER_INCH).toFixed(2)}mm`
+  const size = o.pageSize === 'B5' ? '182mm 257mm' : o.pageSize
+  const rules = [...boxes].map(
+    ([box, parts]) =>
+      `  ${box} { content: ${parts.join(' " " ')}; font-size: 9pt; color: #444; ` +
+      `font-family: 'Hiragino Sans', 'Noto Sans JP', sans-serif; }`
+  )
+
+  return [
+    '@page {',
+    `  size: ${size};`,
+    `  margin: ${mm(m.top)} ${mm(m.right)} ${mm(m.bottom)} ${mm(m.left)};`,
+    ...rules,
+    '}'
+  ].join('\n')
+}

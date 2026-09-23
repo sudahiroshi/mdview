@@ -3,19 +3,11 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 
 import type { Settings } from '../core/types.js'
-import { DOC_PDF_DEFAULTS } from '../core/pdf.js'
+import { DEFAULT_SETTINGS, mergeSettings } from '../core/settings.js'
 
 export type { Settings }
 
-const DEFAULTS: Settings = {
-  numberMode: 'full',
-  numberStyle: 'ja',
-  theme: 'system',
-  recentFiles: [],
-  window: { width: 1200, height: 860 },
-  docPdf: (({ title: _title, ...rest }) => rest)(DOC_PDF_DEFAULTS),
-  exportTransparent: false
-}
+const DEFAULTS = DEFAULT_SETTINGS
 
 const MAX_RECENT = 15
 
@@ -28,14 +20,7 @@ function file(): string {
 export function load(): Settings {
   if (cache) return cache
   try {
-    const raw = JSON.parse(readFileSync(file(), 'utf8')) as Partial<Settings>
-    // 設定ファイルは手で壊されうるので、既定値の上に浅くマージして欠損キーを埋める
-    cache = {
-      ...DEFAULTS,
-      ...raw,
-      window: { ...DEFAULTS.window, ...raw.window },
-      docPdf: { ...DEFAULTS.docPdf, ...raw.docPdf }
-    }
+    cache = mergeSettings(JSON.parse(readFileSync(file(), 'utf8')) as Partial<Settings>)
   } catch {
     cache = { ...DEFAULTS }
   }
