@@ -251,11 +251,13 @@ function pdfButton(fig: HTMLElement): HTMLButtonElement {
   const b = button('PDF', () => {
     void (async () => {
       try {
-        const saved = await exportPdf(exportCtx, fig)
         if (!platform.capabilities.directPdf) {
+          // 印刷が終わるまで戻ってこないので、先に知らせてから呼ぶ
           toast('印刷ダイアログを開きました。送り先に「PDF として保存」を選んでください。')
+          await exportPdf(exportCtx, fig)
           return
         }
+        const saved = await exportPdf(exportCtx, fig)
         if (saved === null) return
         const name = saved.replace(/^.*\//, '')
         toast(settings.exportTransparent ? `保存しました: ${name}（PDF は白背景）` : `保存しました: ${name}`)

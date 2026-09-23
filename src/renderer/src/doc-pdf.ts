@@ -98,17 +98,28 @@ export function openDocPdfDialog(req: DocPdfRequest): void {
     const { title: _title, ...persistable } = options
     void req.persist({ docPdf: persistable })
 
+    const html = serializeForPrint(req.host)
+
+    // 印刷ダイアログを使う環境では、こちらのダイアログを先に閉じる。
+    // 書き出しの完了は印刷が終わるまで返ってこないため、開いたままだと固まって見える。
+    if (!platform.capabilities.directPdf) {
+      el.dialog.close()
+      req.notify('印刷ダイアログを開きました。送り先に「PDF として保存」を選んでください。')
+      try {
+        await req.save(options, html)
+      } catch (err) {
+        req.notify(`PDF の書き出しに失敗しました: ${(err as Error).message}`, 'error')
+      }
+      return
+    }
+
     busy = true
     el.submit.disabled = true
     el.submit.textContent = '作成中…'
     try {
-      const saved = await req.save(options, serializeForPrint(req.host))
+      const saved = await req.save(options, html)
       el.dialog.close()
-      if (!platform.capabilities.directPdf) {
-        req.notify('印刷ダイアログを開きました。送り先に「PDF として保存」を選んでください。')
-      } else if (saved) {
-        req.notify(`保存しました: ${saved.replace(/^.*\//, '')}`)
-      }
+      if (saved) req.notify(`保存しました: ${saved.replace(/^.*\//, '')}`)
     } catch (err) {
       req.notify(`PDF の書き出しに失敗しました: ${(err as Error).message}`, 'error')
     } finally {

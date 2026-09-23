@@ -1,4 +1,4 @@
-import { buildPageCss } from '../core/pdf.js'
+import { buildPageCss, contentBoxPx } from '../core/pdf.js'
 import type { DocPdfOptions } from '../core/pdf.js'
 
 const PRINT_ROOT_ID = 'mdview-print-root'
@@ -8,11 +8,17 @@ const PRINT_STYLE_ID = 'mdview-print-style'
  * ブラウザには printToPDF に相当する API が無いので、印刷ダイアログを経由する。
  * 印刷のあいだだけ本文を差し替え、@page で用紙と余白を決める。
  */
-function printWith(bodyHtml: string, pageCss: string, extraCss = ''): Promise<void> {
+function printWith(
+  bodyHtml: string,
+  pageCss: string,
+  extraCss = '',
+  prepare?: (root: HTMLElement) => void
+): Promise<void> {
   return new Promise((resolve) => {
     const root = document.createElement('div')
     root.id = PRINT_ROOT_ID
     root.innerHTML = bodyHtml
+    prepare?.(root)
 
     const style = document.createElement('style')
     style.id = PRINT_STYLE_ID
@@ -61,8 +67,29 @@ export async function printFigure(svg: string, widthPx: number, heightPx: number
   )
 }
 
+/**
+ * ページに収まらない図を、収まるところまで縮める。
+ * はみ出したままだと、その分がまるごと空白ページになる。
+ * デスクトップ版のオフスクリーン印刷でも同じことをしている。
+ */
+function fitFigures(root: HTMLElement, box: { width: number; height: number }): void {
+  for (const fig of root.querySelectorAll<HTMLElement>('figure.diagram, figure.math')) {
+    const svg = fig.querySelector('svg')
+    const w = Number(fig.dataset['width'])
+    const h = Number(fig.dataset['height'])
+    if (!svg || !w || !h) continue
+    // 図を囲む枠の余白とキャプションのぶんを見込む
+    const k = Math.min(1, (box.width - 36) / w, (box.height - 72) / h)
+    svg.style.width = `${Math.floor(w * k)}px`
+    svg.style.height = 'auto'
+    svg.style.aspectRatio = `${w} / ${h}`
+    svg.style.maxWidth = '100%'
+  }
+}
+
 /** 文書全体を印刷する。文書名とページ番号は @page のマージンボックスで置く。 */
 export async function printDocument(bodyHtml: string, options: DocPdfOptions): Promise<void> {
+  const box = contentBoxPx(options)
   await printWith(
     bodyHtml,
     buildPageCss(options),
@@ -72,6 +99,8 @@ export async function printDocument(bodyHtml: string, options: DocPdfOptions): P
      #${PRINT_ROOT_ID} tr, #${PRINT_ROOT_ID} thead { break-inside: avoid; }
      #${PRINT_ROOT_ID} thead { display: table-header-group; }
      #${PRINT_ROOT_ID} h1, #${PRINT_ROOT_ID} h2, #${PRINT_ROOT_ID} h3 { break-after: avoid; }
-     .export-bar, .popup-menu, .toast { display: none !important; }`
+     #${PRINT_ROOT_ID} img { max-width: 100%; max-height: ${box.height - 40}px; }
+     .export-bar, .popup-menu, .toast { display: none !important; }`,
+    (root) => fitFigures(root, box)
   )
 }
