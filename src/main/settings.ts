@@ -14,7 +14,7 @@ const DEFAULTS: Settings = {
   recentFiles: [],
   window: { width: 1200, height: 860 },
   docPdf: (({ title: _title, ...rest }) => rest)(DOC_PDF_DEFAULTS),
-  pngTransparent: false
+  exportTransparent: false
 }
 
 const MAX_RECENT = 15

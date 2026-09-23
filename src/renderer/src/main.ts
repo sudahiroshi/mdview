@@ -2,7 +2,7 @@ import { createParser, parse, renderTokens } from '@core/markdown'
 import { mathStyleSheet } from '@core/math'
 import { sanitizeInPlace } from '@core/sanitize'
 import { renderDiagrams } from './diagrams'
-import { SEPARATOR, showMenu, type MenuEntry } from './menu'
+import { showMenu, type MenuEntry } from './menu'
 import { openDocPdfDialog, serializeForPrint } from './doc-pdf'
 import { copyTableLatex, exportPdf, exportPng, exportSvg, saveTableLatex, snapshotSvg, toPngBytes, type ExportContext } from './export'
 import type { TableData } from '@core/table'
@@ -154,10 +154,13 @@ function attachFigureBars(host: HTMLElement): void {
     fig.append(
       bar(
         button('PNG', (b) => showMenu(b, pngMenu(fig))),
-        button('PDF', () => void run('PDF 書き出し', () => exportPdf(exportCtx, fig))),
-        button('SVG', () => void run('SVG 書き出し', () => exportSvg(exportCtx, fig))),
+        pdfButton(fig),
+        button('SVG', () =>
+          void run('SVG 書き出し', () => exportSvg(exportCtx, fig, { transparent: settings.exportTransparent }))
+        ),
         // 数式は画像より TeX のほうが使い道が多いので、原文もコピーできるようにする
-        ...(tex ? [button('LaTeX', () => void run('LaTeX', () => window.api.copyText(tex)))] : [])
+        ...(tex ? [button('LaTeX', () => void run('LaTeX', () => window.api.copyText(tex)))] : []),
+        backgroundButton(host)
       )
     )
   }
@@ -188,19 +191,56 @@ function pngMenu(fig: HTMLElement): MenuEntry[] {
       label: scale === 1 ? '等倍' : `${scale} 倍`,
       ...(w && h ? { note: `${pw} × ${ph}` } : {}),
       run: () =>
-        run('PNG 書き出し', () => exportPng(exportCtx, fig, { scale, transparent: settings.pngTransparent }))
+        run('PNG 書き出し', () => exportPng(exportCtx, fig, { scale, transparent: settings.exportTransparent }))
     })
   }
 
-  entries.push(SEPARATOR, {
-    label: '背景を透過する',
-    checked: settings.pngTransparent,
-    run: async () => {
-      settings = await window.api.setSettings({ pngTransparent: !settings.pngTransparent })
-      toast(settings.pngTransparent ? 'PNG の背景を透過にしました' : 'PNG の背景を白にしました')
-    }
-  })
   return entries
+}
+
+/**
+ * 書き出しの背景を切り替えるボタン。
+ * PNG と SVG に共通の指定なので、メニューの中ではなくバーに出して
+ * 今どちらなのかが常に見えるようにする。
+ */
+/**
+ * PDF は必ず白背景になる（Chromium の書き出しがページ全面を塗るため）。
+ * 透過を選んでいるときは、白で出たことがその場で分かるようにしておく。
+ */
+function pdfButton(fig: HTMLElement): HTMLButtonElement {
+  const b = button('PDF', () => {
+    void (async () => {
+      try {
+        const saved = await exportPdf(exportCtx, fig)
+        if (saved === null) return
+        const name = saved.replace(/^.*\//, '')
+        toast(settings.exportTransparent ? `保存しました: ${name}（PDF は白背景）` : `保存しました: ${name}`)
+      } catch (e) {
+        toast(`PDF 書き出しに失敗しました: ${(e as Error).message}`, 'error')
+      }
+    })()
+  })
+  b.title = 'PDF は常に白背景になる（透過が要るときは SVG か PNG）'
+  return b
+}
+
+function backgroundLabel(): string {
+  return settings.exportTransparent ? '背景:透過' : '背景:白'
+}
+
+function backgroundButton(host: HTMLElement): HTMLButtonElement {
+  const b = button(backgroundLabel(), () => {
+    void (async () => {
+      settings = await window.api.setSettings({ exportTransparent: !settings.exportTransparent })
+      // 文書中のボタンの表示だけを更新する。バーごと作り直すと、
+      // 同じ入れ物にいる表の LaTeX ボタンまで巻き添えで消えてしまう
+      for (const t of host.querySelectorAll('.export-bar button.toggle')) t.textContent = backgroundLabel()
+      toast(settings.exportTransparent ? '書き出しの背景を透過にしました' : '書き出しの背景を白にしました')
+    })()
+  })
+  b.classList.add('toggle')
+  b.title = 'PNG と SVG に書き出すときの背景（PDF は常に白）'
+  return b
 }
 
 /**

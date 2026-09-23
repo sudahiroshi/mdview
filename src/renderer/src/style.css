@@ -445,3 +445,10 @@ figure.math:hover .export-bar,
   border-color: transparent;
 }
 #pdf-dialog .actions button:disabled { opacity: 0.55; cursor: default; }
+
+/* 書き出しの背景の指定。押すたびに切り替わるので、今の状態を字で出す */
+.export-bar button.toggle {
+  color: var(--muted);
+  border-style: dashed;
+}
+.export-bar button.toggle:hover { color: var(--fg); }

@@ -41,6 +41,14 @@ export function copyText(text: string): void {
  * jsPDF などで SVG を解釈させるのではなく Chromium の印刷経路を使うのは、
  * 日本語を含むフォントの埋め込みをブラウザ側に任せられ、ベクターのまま出せるため。
  */
+/**
+ * SVG 1 枚を、その実寸ちょうどの 1 ページ PDF にする。
+ *
+ * 背景は必ず白になる。printToPDF はページ全面を白で塗ってから中身を描くためで、
+ * printBackground: false でも、ウインドウを transparent にしても変わらない
+ * （数式のように背景を持たない SVG でも、出来上がった PDF には全面の白い塗りが入る）。
+ * 透過が要るときは PNG か SVG で書き出す。
+ */
 export async function svgToPdf(svg: string, widthPx: number, heightPx: number): Promise<Buffer> {
   const html = `<!doctype html><html><head><meta charset="utf-8"><style>
     html, body { margin: 0; padding: 0; background: #fff; }
