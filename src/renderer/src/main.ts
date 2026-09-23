@@ -1,5 +1,5 @@
-import 'katex/dist/katex.min.css'
 import { createParser, parse, renderTokens } from '@core/markdown'
+import { mathStyleSheet } from '@core/math'
 import { sanitizeInPlace } from '@core/sanitize'
 import { renderDiagrams } from './diagrams'
 import { showMenu } from './menu'
@@ -67,6 +67,7 @@ function render(next: DocPayload | null, opts: { keepScroll?: boolean } = {}): v
   el.content.replaceChildren(host)
   exportCtx.docPath = next.path
   attachTableBars(host, parsed.env.tables)
+  attachFigureBars(host)
   el.title.textContent = next.path.replace(/^.*\//, '')
   document.title = `${el.title.textContent} — mdview`
   docTitle = parsed.env.docTitle
@@ -146,8 +147,10 @@ function button(label: string, onClick: (btn: HTMLButtonElement) => void): HTMLB
 
 /** 描画の済んだ図に、その図だけを書き出すためのボタンを付ける。 */
 function attachFigureBars(host: HTMLElement): void {
-  for (const fig of host.querySelectorAll<HTMLElement>('figure.diagram')) {
+  for (const fig of host.querySelectorAll<HTMLElement>('figure.diagram, figure.math')) {
     if (!fig.querySelector('svg') || fig.querySelector(':scope > .export-bar')) continue
+    measureSvg(fig)
+    const tex = fig.dataset['tex']
     fig.append(
       bar(
         button('PNG', (b) =>
@@ -159,9 +162,27 @@ function attachFigureBars(host: HTMLElement): void {
           ])
         ),
         button('PDF', () => void run('PDF 書き出し', () => exportPdf(exportCtx, fig))),
-        button('SVG', () => void run('SVG 書き出し', () => exportSvg(exportCtx, fig)))
+        button('SVG', () => void run('SVG 書き出し', () => exportSvg(exportCtx, fig))),
+        // 数式は画像より TeX のほうが使い道が多いので、原文もコピーできるようにする
+        ...(tex ? [button('LaTeX', () => void run('LaTeX', () => window.api.copyText(tex)))] : [])
       )
     )
+  }
+}
+
+/**
+ * 書き出しに必要な実寸を図に持たせる。
+ * 図式は描画時に viewBox から入れているが、数式の SVG は寸法を ex 単位で書くので
+ * viewBox からは px が出ない。表示されている大きさをそのまま測る。
+ */
+function measureSvg(fig: HTMLElement): void {
+  if (fig.dataset['width']) return
+  const svg = fig.querySelector('svg')
+  if (!svg) return
+  const r = svg.getBoundingClientRect()
+  if (r.width > 0 && r.height > 0) {
+    fig.dataset['width'] = String(Math.round(r.width))
+    fig.dataset['height'] = String(Math.round(r.height))
   }
 }
 
@@ -259,6 +280,11 @@ el.numberStyle.addEventListener('change', () => void updateSettings({ numberStyl
 el.theme.addEventListener('change', () => void updateSettings({ theme: el.theme.value as Settings['theme'] }))
 
 async function init(): Promise<void> {
+  // liteAdaptor を使っていると MathJax が自分でスタイルを入れないので、ここで一度だけ入れる
+  const mathCss = document.createElement('style')
+  mathCss.textContent = mathStyleSheet()
+  document.head.append(mathCss)
+
   settings = await window.api.getSettings()
   el.numberMode.value = settings.numberMode
   el.numberStyle.value = settings.numberStyle

@@ -1,12 +1,15 @@
 import MarkdownItFactory, { type MarkdownIt, type Token, type StateCore } from 'markdown-it'
 import attrs from 'markdown-it-attrs'
+// markdown-it-texmath は engine を渡していても require('katex') を静的に含むため、
+// katex は使わなくても依存として残しておく必要がある（mermaid も内部で使っている）。
+// 実際の数式描画は下で渡す mathEngine（MathJax）が行う。
 import texmath from 'markdown-it-texmath'
-import katex from 'katex'
 import { isExternalUrl, resolveFromDoc, assetUrl } from './paths.js'
 import { parseFenceInfo, type DiagramKind, diagramKindOf } from './fence.js'
 import { implicitFigures, tableCaptions } from './structure.js'
 import { applyNumbering, type NumberingOptions, type OutlineItem, type LabelEntry } from './numbering.js'
 import { extractTables, type TableData } from './table.js'
+import { mathEngine, renderMath } from './math.js'
 
 export interface DiagramBlock {
   kind: DiagramKind
@@ -29,6 +32,8 @@ export interface RenderEnv {
   docTitle: string | null
   /** 表の構造。LaTeX 書き出しで使う。 */
   tables: Map<string, TableData>
+  /** ディスプレイ数式の連番。書き出し時のファイル名に使う id を振るため。 */
+  mathCount: number
   [key: string | symbol]: unknown
 }
 
@@ -113,6 +118,32 @@ function diagramFences(md: MarkdownIt): void {
   }
 }
 
+/**
+ * 独立行のディスプレイ数式を figure に包み、TeX 原文を data 属性に残す。
+ *
+ * figure にするのは、図と同じ書き出しボタンを載せるため。
+ * TeX を持たせるのは LaTeX コピー用（描画後の SVG からは復元できない）。
+ * 本文中の $...$ には触らない（段落の中に figure を入れると入れ子が壊れる）。
+ */
+function mathFigures(md: MarkdownIt): void {
+  for (const name of ['math_block', 'math_block_eqno']) {
+    md.renderer.rules[name] = (tokens, idx, _options, env) => {
+      const token = tokens[idx]
+      const scope = env as Partial<RenderEnv>
+      const id = `eq-${(scope.mathCount = (scope.mathCount ?? 0) + 1)}`
+      const eqno = name === 'math_block_eqno' ? token.info : ''
+      // ブロックの content は前後に改行を含む。コピーしたときに扱いやすいよう落とす
+      const tex = token.content.trim()
+      return (
+        `<figure class="math" id="${id}" data-tex="${md.utils.escapeHtml(tex)}">` +
+        `<div class="math-body">${renderMath(tex, true)}</div>` +
+        (eqno ? `<span class="eqno">(${md.utils.escapeHtml(eqno)})</span>` : '') +
+        `</figure>\n`
+      )
+    }
+  }
+}
+
 /** table_open の直後に caption 要素を出力する（HTML では caption は table の先頭に置く）。 */
 function tableCaptionRenderer(md: MarkdownIt): void {
   md.renderer.rules.table_open = (tokens, idx, options, env, self) => {
@@ -144,11 +175,8 @@ export function createParser(): MarkdownIt {
     breaks: false
   })
   md.use(attrs, { allowedAttributes: ['id', 'class', 'width', 'height', 'caption'] })
-  md.use(texmath, {
-    engine: katex,
-    delimiters: 'dollars',
-    katexOptions: { throwOnError: false, strict: false }
-  })
+  md.use(texmath, { engine: mathEngine, delimiters: 'dollars' })
+  mathFigures(md)
   headingIds(md)
   implicitFigures(md)
   tableCaptions(md)
@@ -181,7 +209,8 @@ export function parse(md: MarkdownIt, source: string, docDir: string, numbering:
     outline: [],
     labels: new Map(),
     docTitle: null,
-    tables: new Map()
+    tables: new Map(),
+    mathCount: 0
   }
   return { tokens: md.parse(source, env), env }
 }

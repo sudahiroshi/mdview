@@ -13,8 +13,8 @@ Markdown を「読む・見せる・部品を取り出す」ための macOS 向�
 
 ビルドに Node.js 22 以降が要るだけです。**実行時の外部依存はありません。**
 
-Mermaid・Graphviz・PlantUML・数式のすべてを、アプリに同梱した JavaScript と
-WebAssembly だけで描きます。外部コマンド（Java, Graphviz, PlantUML）は不要で、
+Mermaid・Graphviz・PlantUML・数式（MathJax）のすべてを、アプリに同梱した
+JavaScript と WebAssembly だけで描きます。外部コマンド（Java, Graphviz, PlantUML）は不要で、
 **図の内容を外部サーバへ送ることもありません。**
 
 ## セットアップ
@@ -113,7 +113,12 @@ graph TD; A --> B;
 | 図 | PNG | 1 / 2 / 3 倍、背景は白または透過 |
 | 図 | PDF | 図の実寸ちょうどの 1 ページ。日本語もベクターのまま |
 | 図 | SVG | 再編集用 |
+| 数式 | PNG / PDF / SVG | `$$...$$` のディスプレイ数式のみ。図と同じ形式で書き出せる |
+| 数式 | LaTeX | TeX の原文をクリップボードへ |
 | 表 | LaTeX | booktabs の `table` / `longtable`。コピーまたは `.tex` 保存 |
+
+数式は MathJax が SVG で描いているので、書き出したものは拡大に耐えるベクターで、
+フォントを埋め込まなくても字が出ます。本文中の `$...$` にはボタンを出しません。
 
 ### 文書全体（PDF）
 

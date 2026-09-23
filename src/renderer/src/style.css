@@ -206,9 +206,28 @@ figure.image > figcaption {
 }
 
 /* ---- 数式 ---- */
-.doc eq { font-size: 1em; }
-.doc section.eq { margin: 1.2em 0; overflow-x: auto; }
-.katex-display { margin: 0; }
+figure.math {
+  margin: 1.4em 0;
+  padding: 0;
+  text-align: center;
+}
+
+/* 長い式が本文からはみ出さないよう、数式だけ横に送れるようにする */
+.math-body { overflow-x: auto; padding: 2px 0; }
+
+figure.math .eqno { margin-left: 12px; color: var(--muted); font-size: 0.9em; }
+
+.doc mjx-container { color: var(--fg); }
+.doc mjx-container svg { max-width: 100%; }
+
+.doc .math-error {
+  color: #b3261e;
+  background: #fff3f2;
+  border-radius: 3px;
+  padding: 0 4px;
+  font-family: 'SF Mono', Menlo, monospace;
+  font-size: 0.9em;
+}
 
 /* ---- 番号と相互参照 ---- */
 .doc .num { color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -239,7 +258,7 @@ figure.image > figcaption {
 .doc :target > caption { color: var(--fg); }
 
 /* ---- 書き出しボタン ---- */
-figure.diagram, .export-host { position: relative; }
+figure.diagram, figure.math, .export-host { position: relative; }
 .export-host { margin: 1.2em 0; }
 
 .export-bar {
@@ -254,6 +273,7 @@ figure.diagram, .export-host { position: relative; }
 }
 
 figure.diagram:hover .export-bar,
+figure.math:hover .export-bar,
 .export-host:hover .export-bar,
 .export-bar:focus-within { opacity: 1; pointer-events: auto; }
 
