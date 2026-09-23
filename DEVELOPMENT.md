@@ -239,3 +239,20 @@ npm run dist     # dist/mac-arm64/mdview.app（未署名、arm64）
 `npm run web:serve`（`tools/serve-web.mjs`、依存なし）は手元での確認用。
 入口の HTML と Service Worker は `no-cache`、ハッシュ付きの資材は 1 年の `immutable` を返し、
 配布ディレクトリの外は返さない。
+
+#### GitHub Pages への配置
+
+`.github/workflows/deploy-web.yml` が `main` への push で動く
+（ブラウザ版に関わるファイルが変わったときだけ。手動実行も可）。
+型検査と単体テストを通してから組み立て、成果物を Pages へ渡す。
+
+**成果物はリポジトリに入れない。** `gh-pages` ブランチも作らず、
+Actions の成果物として直接配る方式にしている。`dist-web/` はハッシュ付きの
+ファイル名で毎回変わるので、コミットすると更新のたびに数 MB の差分が積み上がる。
+
+はじめに一度だけ、リポジトリの **Settings > Pages > Source を「GitHub Actions」** に
+する必要がある。これをしないと配置の段階で失敗する。
+
+Electron の実行ファイルはブラウザ版のビルドに要らないが、electron 44 には
+install を省く環境変数が無いため止められない。`~/.cache/electron` を
+使い回して 2 回目以降の取得を省いている。

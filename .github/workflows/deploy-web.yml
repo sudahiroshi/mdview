@@ -1,0 +1,84 @@
+# ブラウザ版（PWA）を GitHub Pages へ配置する。
+#
+# 成果物はリポジトリに置かず、ここで毎回組み立てて配る。
+# 事前に一度だけ、リポジトリの Settings > Pages > Source を
+# 「GitHub Actions」にしておく必要がある。
+name: ブラウザ版を配置
+
+on:
+  push:
+    branches: [main]
+    # ブラウザ版に関わらない変更（デスクトップ版だけの修正や文書）では動かさない
+    paths:
+      - 'src/core/**'
+      - 'src/platform/**'
+      - 'src/renderer/**'
+      - 'src/types/**'
+      - 'web/**'
+      - 'vite.config.web.ts'
+      - 'tsconfig*.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 配置は 1 本ずつ。進行中のものは取り消さず、最後まで終わらせる
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 組み立て
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      # ブラウザ版のビルドに Electron の実行ファイルは要らないが、
+      # electron の install スクリプトは止められない（44 には skip の環境変数が無い）。
+      # 100MB 超を毎回落とさずに済むよう、取得したものを使い回す。
+      - name: Electron の取得物を使い回す
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/electron
+          key: electron-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: 依存を入れる
+        run: npm ci
+
+      - name: 型検査
+        run: npm run typecheck
+
+      - name: 単体テスト
+        run: npm test
+
+      - name: ブラウザ版を組み立てる
+        run: npm run web:build
+
+      - uses: actions/configure-pages@v6
+
+      # vite の base は './' なので、どの階層に置かれても動く
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist-web
+
+  deploy:
+    name: 配置
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
