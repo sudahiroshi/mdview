@@ -232,13 +232,21 @@ npm run dist:mac   # 配布用。universal の DMG を作り、dist/release/ に
 
 ```
 dist/release/
-  mdview-<版>-universal.dmg    Apple Silicon と Intel の両対応
+  mdview-<版>-arm64.dmg        Apple Silicon 用（約 126 MB）
+  mdview-<版>-x64.dmg          Intel 用（約 132 MB）
+  mdview-<版>-universal.dmg    どちらでも動く（約 223 MB）
   SHA256SUMS.txt               受け取り側の検証用
-  はじめにお読みください.txt     導入手順（DMG の中にも同じものが入る）
+  お読みください.txt             どれを選ぶかと導入手順
 ```
 
 **この中身をそのままファイルサーバへ置く。** 版はファイル名に入るので、
 `package.json` の `version` を上げてから作る。
+
+機種別を出しているのは、universal が両アーキを抱えて倍近くなるため。
+`お読みください.txt` は `tools/make-release.mjs` が出来上がったファイル名と
+実際の大きさを見て組み立てる（手で書くと版を上げるたびにずれる）。
+導入手順は `build/dmg/はじめにお読みください.txt` が一次情報で、
+DMG の中にはそれが入り、置き場の案内にはその内容が取り込まれる。
 
 #### アドホック署名を必ず付ける
 

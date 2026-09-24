@@ -70,7 +70,9 @@
         {
           "target": "dmg",
           "arch": [
-            "universal"
+            "universal",
+            "x64",
+            "arm64"
           ]
         }
       ],
