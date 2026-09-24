@@ -35,11 +35,11 @@
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
-    "dist": "electron-vite build && electron-builder --mac --dir",
-    "pack": "electron-vite build && electron-builder --mac",
+    "dist": "electron-vite build && electron-builder --mac --dir --arm64",
     "web:dev": "vite --config vite.config.web.ts",
     "web:build": "tsc --noEmit -p tsconfig.web.json && vite build --config vite.config.web.ts",
-    "web:serve": "node tools/serve-web.mjs"
+    "web:serve": "node tools/serve-web.mjs",
+    "dist:mac": "electron-vite build && electron-builder --mac && node tools/make-release.mjs"
   },
   "build": {
     "appId": "jp.ac.chibatech.suda.mdview",
@@ -68,15 +68,44 @@
       "category": "public.app-category.productivity",
       "target": [
         {
-          "target": "dir",
+          "target": "dmg",
           "arch": [
-            "arm64"
+            "universal"
           ]
         }
       ],
       "identity": null,
       "darkModeSupport": true,
-      "icon": "build/icon.icns"
-    }
+      "icon": "build/icon.icns",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "dmg": {
+      "title": "mdview ${version}",
+      "window": {
+        "width": 620,
+        "height": 420
+      },
+      "iconSize": 110,
+      "contents": [
+        {
+          "x": 150,
+          "y": 150,
+          "type": "file"
+        },
+        {
+          "x": 470,
+          "y": 150,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 310,
+          "y": 310,
+          "type": "file",
+          "path": "build/dmg/はじめにお読みください.txt"
+        }
+      ]
+    },
+    "afterPack": "./build/after-pack.cjs"
   }
 }

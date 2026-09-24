@@ -224,10 +224,52 @@ npx electron tools/make-icon.mjs
 ### デスクトップ版
 
 ```sh
-npm run dist     # dist/mac-arm64/mdview.app（未署名、arm64）
+npm run dist       # 開発中の確認用。arm64 のアプリだけを作る（速い）
+npm run dist:mac   # 配布用。universal の DMG を作り、dist/release/ にまとめる
 ```
 
-未署名・未公証。自分の Mac で使う分には問題ないが、他人に配るには Apple の署名が要る。
+`dist:mac` の成果物:
+
+```
+dist/release/
+  mdview-<版>-universal.dmg    Apple Silicon と Intel の両対応
+  SHA256SUMS.txt               受け取り側の検証用
+  はじめにお読みください.txt     導入手順（DMG の中にも同じものが入る）
+```
+
+**この中身をそのままファイルサーバへ置く。** 版はファイル名に入るので、
+`package.json` の `version` を上げてから作る。
+
+#### アドホック署名を必ず付ける
+
+`build/after-pack.cjs` が、出来上がったアプリに `codesign --sign -` を掛けている。
+**これを外すと配布が成立しない。**
+
+electron-builder は `identity: null` のとき署名を一切行わない。署名の無いバンドルは、
+ダウンロードで付く隔離属性と組み合わさると **「壊れているため開けません」** になり、
+利用者側に回避する手立てがない。アドホック署名を付けておけば
+「開発元を検証できない」という通常の警告に留まり、システム設定から許可して起動できる。
+
+実際に確かめた違い:
+
+| | 署名なし | アドホック署名 |
+|---|---|---|
+| `codesign --verify --deep --strict` | `code object is not signed at all` | 成功 |
+| バンドルの Identifier | `Electron` | `jp.ac.chibatech.suda.mdview` |
+| 隔離属性を付けたとき | 「壊れている」扱い | 「開発元を検証できない」（許可すれば起動） |
+
+`--deep` は非推奨だが、入れ子の Electron Framework と Helper まで一度に署名するには
+この方法が確実。署名後に `codesign --verify --deep --strict` が通ることを確認している。
+
+universal ビルドでは各アーキの一時ディレクトリでも `afterPack` が呼ばれる。
+統合前に署名しても捨てられるので、`-temp` で終わる出力先は飛ばしている。
+
+#### 証明書が手に入ったら
+
+Apple Developer Program に登録して Developer ID 証明書を入れれば、
+`mac.identity` に証明書名を指定し、`mac.notarize` を有効にする。
+そうすれば受け取り側は普通にダブルクリックで開けるようになり、
+上の許可操作も `build/dmg/はじめにお読みください.txt` の説明も不要になる。
 
 ### ブラウザ版
 
