@@ -73,7 +73,8 @@ function render(next: DocPayload | null, opts: { keepScroll?: boolean } = {}): v
   attachTableBars(host, parsed.env.tables)
   attachFigureBars(host)
   el.title.textContent = next.path.replace(/^.*\//, '')
-  document.title = `${el.title.textContent} — mdview`
+  // 複数ウインドウを持つ環境では、同名ファイルを区別するために実行環境側が題を決める
+  if (platform.kind === 'web') document.title = `${el.title.textContent} — mdview`
   docTitle = parsed.env.docTitle
   buildOutline(parsed.env.outline)
   void resolveImages(host, next.dir).then(({ unresolved }) => {
@@ -392,11 +393,29 @@ document.addEventListener('drop', (e) => {
 
 /* ---------------- 設定 UI ---------------- */
 
-async function updateSettings(patch: Partial<Settings>): Promise<void> {
-  settings = await platform.setSettings(patch)
+/** 設定の内容をツールバーと表示に反映する。 */
+function applySettings(): void {
+  el.numberMode.value = settings.numberMode
+  el.numberStyle.value = settings.numberStyle
+  el.theme.value = settings.theme
   applyTheme()
   if (doc) render(doc, { keepScroll: true })
 }
+
+async function updateSettings(patch: Partial<Settings>): Promise<void> {
+  settings = await platform.setSettings(patch)
+  applySettings()
+}
+
+platform.onTitle((title) => {
+  document.title = title
+})
+
+// 設定はアプリ全体で 1 つ。他のウインドウで変えられたらこちらも合わせる
+platform.onSettingsChanged((next) => {
+  settings = next
+  applySettings()
+})
 
 el.numberMode.addEventListener('change', () => void updateSettings({ numberMode: el.numberMode.value as Settings['numberMode'] }))
 el.numberStyle.addEventListener('change', () => void updateSettings({ numberStyle: el.numberStyle.value as Settings['numberStyle'] }))
@@ -413,10 +432,7 @@ async function init(): Promise<void> {
   document.head.append(mathCss)
 
   settings = await platform.getSettings()
-  el.numberMode.value = settings.numberMode
-  el.numberStyle.value = settings.numberStyle
-  el.theme.value = settings.theme
-  applyTheme()
+  applySettings()
   if (!doc) render(null)
 }
 

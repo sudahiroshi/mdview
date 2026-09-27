@@ -18,7 +18,10 @@ export function resolveFromDoc(docDir: string, src: string): string {
   return '/' + out.join('/')
 }
 
-/** レンダラから読める mdv-asset URL を組み立てる（メイン側の assets.ts と対になる）。 */
-export function assetUrl(absPath: string): string {
-  return `mdv-asset://local/${encodeURIComponent(absPath)}`
+/**
+ * レンダラから読める mdv-asset URL を組み立てる（メイン側の assets.ts と対になる）。
+ * 許可範囲はウインドウごとに違うので、どのウインドウとして読むかを含める。
+ */
+export function assetUrl(windowId: number, absPath: string): string {
+  return `mdv-asset://local/${windowId}/${encodeURIComponent(absPath)}`
 }

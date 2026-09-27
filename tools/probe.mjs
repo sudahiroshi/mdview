@@ -1,12 +1,36 @@
-// tako:run: node tools/probe.mjs '<評価する JS 式>'
+// tako:run: node tools/probe.mjs '<評価する JS 式>' [対象]
 // 起動中の mdview（MDVIEW_DEBUG_PORT=9222 付き）に接続し、レンダラで式を評価して結果を表示する。
+//
+// 複数ウインドウがあるときは第 2 引数で選ぶ。
+//   数字        … 上から数えた番号（0 起点）
+//   それ以外    … タイトルに含まれる文字列
+//   省略        … 1 枚目。ただし 2 枚以上あるときは一覧を出して知らせる
 const port = process.env.MDVIEW_DEBUG_PORT ?? '9222'
 const expr = process.argv[2] ?? 'document.title'
+const want = process.argv[3]
 
 const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json()
-const page = targets.find((t) => t.type === 'page' && t.webSocketDebuggerUrl)
-if (!page) {
+const pages = targets.filter((t) => t.type === 'page' && t.webSocketDebuggerUrl)
+if (pages.length === 0) {
   console.error('レンダラのターゲットが見つかりません')
+  process.exit(1)
+}
+
+let page
+if (want === undefined) {
+  page = pages[0]
+  if (pages.length > 1) {
+    console.error(`ウインドウが ${pages.length} 枚あります（1 枚目を見ます）:`)
+    pages.forEach((p, i) => console.error(`  [${i}] ${p.title}`))
+  }
+} else if (/^\d+$/.test(want)) {
+  page = pages[Number(want)]
+} else {
+  page = pages.find((p) => p.title.includes(want))
+}
+if (!page) {
+  console.error(`対象「${want}」に当たるウインドウがありません。あるのは:`)
+  pages.forEach((p, i) => console.error(`  [${i}] ${p.title}`))
   process.exit(1)
 }
 

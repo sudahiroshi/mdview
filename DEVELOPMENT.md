@@ -132,6 +132,22 @@ tools/                   検証とアイコン生成のスクリプト
 - **図の自動 id は章で戻さない。** 図表番号は章ごとにリセットするが、それを id に使うと
   章をまたいで `fig-1` が重複し、アンカーが壊れる。
 
+### 複数ウインドウ（デスクトップ版）
+
+- **状態はウインドウごとに持つ。** `src/main/index.ts` の `windows: Map<number, DocWindow>`
+  が、表示中の文書とファイル監視を webContents の id で引く。
+- **画像の配信範囲もウインドウごと。** 配信要求からは要求元のウインドウが分からないので、
+  URL に id を含めてもらう（`mdv-asset://local/<id>/<パス>`）。全ウインドウの範囲を
+  ひとまとめにすると、別のウインドウで開いている文書の隣のファイルまで読めてしまう。
+- **ウインドウの題はレンダラが設定する。** `win.setTitle()` は `document.title` に
+  上書きされるので、メイン側で決めた文字列を `ui:title` で送り、レンダラに付けさせる。
+  同名ファイルを複数開いたときは親フォルダ名を添える。
+- **設定の変更は他のウインドウにも配る。** 設定はアプリ全体で 1 つなので、
+  配らないと片方で番号モードを変えても他方が古い表示のまま残る。
+- **`open-file` はウインドウが 0 枚でも処理する。** macOS は全部閉じてもアプリが残る。
+  「ready 済みかつウインドウがある」を条件にすると、その状態で開いたファイルが
+  どこにも行かずに消える。
+
 ### 環境
 
 - **`sandbox: true` のプリロードは ESM を読めない。** CommonJS（`index.cjs`）で出力する。
@@ -169,6 +185,13 @@ MDVIEW_DEBUG_PORT=9333 node tools/probe.mjs "<JS 式>"
 window.__mdview.open('/path/to/doc.md')
 window.__mdview.snapshotSvg(fig, { background: '#ffffff' })
 window.debugApi.docPdfBytes(html, options)
+```
+
+複数ウインドウがあるときは、第 2 引数で対象を選ぶ（番号か、題に含まれる文字列）。
+
+```sh
+MDVIEW_DEBUG_PORT=9333 node tools/probe.mjs "document.title" 1
+MDVIEW_DEBUG_PORT=9333 node tools/probe.mjs "document.title" sample
 ```
 
 ### ブラウザ版を調べる

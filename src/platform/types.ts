@@ -49,4 +49,15 @@ export interface Platform {
   onDocChanged(cb: (doc: DocPayload) => void): () => void
   /** 文書全体の PDF 書き出しを求められたとき。 */
   onRequestDocPdf(cb: () => void): () => void
+  /**
+   * 別のウインドウで設定が変わったとき。
+   * ウインドウが 1 つしかない環境（ブラウザ版）では呼ばれない。
+   */
+  onSettingsChanged(cb: (settings: Settings) => void): () => void
+  /**
+   * ウインドウの題が決まったとき。
+   * 同名のファイルを複数開いたときの区別があるので、複数ウインドウを持つ環境では
+   * 実行環境側が決める。ブラウザ版では呼ばれず、画面側が自分で付ける。
+   */
+  onTitle(cb: (title: string) => void): () => void
 }

@@ -2,6 +2,9 @@ import { assetUrl, isExternalUrl, resolveFromDoc } from '../core/paths.js'
 import type { Capabilities, DocPayload, Platform, SaveRequest, Settings } from './types.js'
 import type { DocPdfOptions } from '../core/pdf.js'
 
+/** 画像の配信範囲はウインドウごとなので、自分の id を一度だけ聞いて覚える。 */
+let windowId: number | null = null
+
 const capabilities: Capabilities = {
   chooseSaveLocation: true,
   relativeImages: true,
@@ -21,7 +24,8 @@ export const electronPlatform: Platform = {
 
   async resolveImage(dir, src) {
     if (isExternalUrl(src)) return src
-    return assetUrl(resolveFromDoc(dir, src))
+    windowId ??= await window.api.windowId()
+    return assetUrl(windowId, resolveFromDoc(dir, src))
   },
 
   save: (req: SaveRequest, data) => window.api.save(req, data),
@@ -34,5 +38,7 @@ export const electronPlatform: Platform = {
 
   onDocOpened: (cb: (doc: DocPayload) => void) => window.api.onDocOpened(cb),
   onDocChanged: (cb: (doc: DocPayload) => void) => window.api.onDocChanged(cb),
-  onRequestDocPdf: (cb) => window.api.onRequestDocPdf(cb)
+  onRequestDocPdf: (cb) => window.api.onRequestDocPdf(cb),
+  onSettingsChanged: (cb: (s: Settings) => void) => window.api.onSettingsChanged(cb),
+  onTitle: (cb: (title: string) => void) => window.api.onTitle(cb)
 }

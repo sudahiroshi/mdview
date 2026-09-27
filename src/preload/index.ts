@@ -20,6 +20,9 @@ const api = {
   getSettings: (): Promise<Settings> => ipcRenderer.invoke('settings:get'),
   setSettings: (patch: Partial<Settings>): Promise<Settings> => ipcRenderer.invoke('settings:set', patch),
 
+  /** このウインドウの識別子。画像の配信範囲がウインドウごとに違うため要る。 */
+  windowId: (): Promise<number> => ipcRenderer.invoke('win:id'),
+
   /** ドロップされた File から絶対パスを得る（Electron 32 以降 File.path は廃止）。 */
   pathForFile: (f: File): string => webUtils.getPathForFile(f),
 
@@ -28,6 +31,20 @@ const api = {
     const h = (): void => cb()
     ipcRenderer.on('ui:doc-pdf', h)
     return () => ipcRenderer.off('ui:doc-pdf', h)
+  },
+
+  /** ウインドウの題が決まったとき（同名ファイルの区別のためメイン側が決める）。 */
+  onTitle: (cb: (title: string) => void): (() => void) => {
+    const h = (_e: unknown, title: string): void => cb(title)
+    ipcRenderer.on('ui:title', h)
+    return () => ipcRenderer.off('ui:title', h)
+  },
+
+  /** 他のウインドウで設定が変わったとき。 */
+  onSettingsChanged: (cb: (s: Settings) => void): (() => void) => {
+    const h = (_e: unknown, s: Settings): void => cb(s)
+    ipcRenderer.on('settings:changed', h)
+    return () => ipcRenderer.off('settings:changed', h)
   },
 
   onDocOpened: (cb: (doc: DocPayload) => void): (() => void) => {

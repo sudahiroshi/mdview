@@ -4,16 +4,23 @@ import { pathToFileURL } from 'node:url'
 
 export const ASSET_SCHEME = 'mdv-asset'
 
-/** 参照を許可するディレクトリ（表示中の .md があるディレクトリ）。 */
-let allowedRoot: string | null = null
+/**
+ * ウインドウごとの「参照を許可するディレクトリ」。
+ *
+ * 配信要求からは要求元のウインドウが分からないので、URL に window の id を含めてもらい
+ * （core/paths.ts の assetUrl と対）、その id の許可範囲だけで判定する。
+ * 全ウインドウの許可範囲をひとまとめにすると、別のウインドウで開いている文書の
+ * 隣にあるファイルまで読めてしまう。
+ */
+const roots = new Map<number, string>()
 
-export function setAssetRoot(dir: string | null): void {
-  allowedRoot = dir ? resolve(dir) : null
+export function setAssetRoot(windowId: number, dir: string | null): void {
+  if (dir) roots.set(windowId, resolve(dir))
+  else roots.delete(windowId)
 }
 
-/** 絶対パスをレンダラから読める URL へ変換する。 */
-export function assetUrl(absPath: string): string {
-  return `${ASSET_SCHEME}://local/${encodeURIComponent(absPath)}`
+export function clearAssetRoot(windowId: number): void {
+  roots.delete(windowId)
 }
 
 export function registerAssetScheme(): void {
@@ -25,10 +32,14 @@ export function registerAssetScheme(): void {
 export function handleAssetScheme(): void {
   protocol.handle(ASSET_SCHEME, async (request) => {
     try {
-      const raw = decodeURIComponent(new URL(request.url).pathname.replace(/^\//, ''))
-      const abs = resolve(raw)
+      // mdv-asset://local/<ウインドウ id>/<URL エンコードした絶対パス>
+      const matched = /^\/(\d+)\/(.+)$/.exec(new URL(request.url).pathname)
+      if (!matched) return new Response('bad request', { status: 400 })
+
+      const root = roots.get(Number(matched[1]))
+      const abs = resolve(decodeURIComponent(matched[2]))
       // 表示中の文書があるディレクトリの外は読ませない（意図しないファイル読み出しの防止）
-      if (!allowedRoot || !(abs === allowedRoot || abs.startsWith(allowedRoot + sep))) {
+      if (!root || !(abs === root || abs.startsWith(root + sep))) {
         return new Response('forbidden', { status: 403 })
       }
       return await net.fetch(pathToFileURL(abs).toString())

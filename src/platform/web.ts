@@ -268,7 +268,10 @@ export const webPlatform: Platform & { grantAssetFolder(): Promise<boolean> } = 
 
   onDocOpened: (cb) => subscribe(openedHandlers, cb),
   onDocChanged: (cb) => subscribe(changedHandlers, cb),
-  onRequestDocPdf: (cb) => subscribe(docPdfHandlers, cb)
+  onRequestDocPdf: (cb) => subscribe(docPdfHandlers, cb),
+  // ブラウザ版はウインドウが 1 つなので、他から設定が変わることも題を決められることもない
+  onSettingsChanged: () => () => undefined,
+  onTitle: () => () => undefined
 }
 
 /** キーボード操作など、アプリ側から PDF 書き出しを促すとき。 */
