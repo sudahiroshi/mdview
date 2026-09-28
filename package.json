@@ -1,6 +1,6 @@
 {
   "name": "mdview",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "図表を描画し、図をPDF/PNGへ、表をLaTeXへ書き出せるmacOS向けMarkdownビューアー",
   "main": "./out/main/index.js",
   "keywords": [],
