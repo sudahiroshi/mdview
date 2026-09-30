@@ -6,3 +6,13 @@ dist/
 *.tsbuildinfo
 dist-web/
 test/fixtures/*.pdf
+
+# 秘匿情報のうっかりコミットを防ぐ網。
+# 公証の資格情報はキーチェーンに預ける（tools/notarize-dmg.mjs の説明を参照）ので、
+# 本来これらのファイルは要らない。
+.env
+.env.*
+*.p8
+*.p12
+*.cer
+*.mobileprovision
