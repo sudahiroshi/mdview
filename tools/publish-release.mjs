@@ -14,7 +14,7 @@
 //   npm run release                                   # 上げる
 import { execFile, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { readdir, readFile, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -201,12 +201,28 @@ await writeFile(notesFile, notes)
 
 // ---- 上げる ---------------------------------------------------------------
 
-const assets = files.map((f) => join(release, f))
+// GitHub は資材のファイル名を ASCII に丸めるので、日本語の名前のままだと
+// 「.......txt」のようになってダウンロードした側が読めない。上げるときだけ
+// ASCII 名の写しを使い、画面に出る名前は # で添える（写しは一時領域に置く）。
+const ASCII_NAME = { 'お読みください.txt': 'READ-ME-FIRST-ja.txt' }
+const staging = join(tmpdir(), `mdview-${tag}-assets`)
+await mkdir(staging, { recursive: true })
+const assets = []
+for (const f of files) {
+  const ascii = ASCII_NAME[f]
+  if (!ascii) {
+    assets.push(join(release, f))
+    continue
+  }
+  const to = join(staging, ascii)
+  await copyFile(join(release, f), to)
+  assets.push(`${to}#${f}`)
+}
 
 console.log(`\n=== ${tag} ===\n`)
 console.log(notes.replace(/^/gm, '  '))
 console.log('添付するもの:')
-for (const f of files) console.log(`  ${f}`)
+for (const f of files) console.log(`  ${f}${ASCII_NAME[f] ? `  → ${ASCII_NAME[f]} として上げる` : ''}`)
 
 if (dryRun) {
   console.log('\n--dry-run なので何も送っていません。')
