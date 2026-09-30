@@ -1,0 +1,28 @@
+name: 機能の要望
+description: こういうことがしたい、という提案
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 何に困っていますか
+      description: |
+        欲しい機能そのものより、**その前にある困りごと**を書いてもらえると助かります。
+        別のやり方で解けることがあります。
+      placeholder: |
+        論文に貼る図を毎回 Illustrator で開いて余白を詰めている。
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: こうなっていると良い
+      placeholder: |
+        SVG で書き出すときに、図の周りの余白を mm で指定できる。
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: 今はどうしていますか
+      description: 代わりの手段があるか、それで足りない理由。

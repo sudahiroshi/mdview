@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 使い方を調べる
+    url: https://github.com/sudahiroshi/mdview#readme
+    about: 記法・表示モード・書き出し・「困ったとき」は README にあります。

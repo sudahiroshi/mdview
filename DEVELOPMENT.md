@@ -24,6 +24,8 @@ npm install
 | `npm run web:serve` | `dist-web/` を配る（<http://localhost:4174>） |
 | `npm test` | 単体テスト（83 件） |
 | `npm run typecheck` | 型検査（node 側と web 側の 2 プロジェクト） |
+| `npm run licenses` | `THIRD-PARTY-NOTICES.md` を作り直す |
+| `npm run release` | `dist/release/` を GitHub Releases へ上げる |
 
 ---
 
@@ -260,10 +262,13 @@ dist/release/
   mdview-<版>-universal.dmg    どちらでも動く（約 223 MB）
   SHA256SUMS.txt               受け取り側の検証用
   お読みください.txt             どれを選ぶかと導入手順
+  LICENSE                      本体の利用条件
+  THIRD-PARTY-NOTICES.md       同梱ライブラリの利用条件
 ```
 
-**この中身をそのままファイルサーバへ置く。** 版はファイル名に入るので、
-`package.json` の `version` を上げてから作る。
+**この中身をそのまま配る。** GitHub Releases でも学内ファイルサーバでも、
+置くものは同じ。版はファイル名に入るので、`package.json` の `version` を
+上げてから作る。
 
 機種別を出しているのは、universal が両アーキを抱えて倍近くなるため。
 `お読みください.txt` は `tools/make-release.mjs` が出来上がったファイル名と
@@ -328,6 +333,34 @@ electron-builder の署名で上書きされるだけなので何もしない）
 | `spctl -a` | rejected | rejected | **accepted** |
 | 受け取り側の操作 | 起動できない | システム設定から許可 | **ダブルクリックのみ** |
 
+#### GitHub Releases へ上げる
+
+```sh
+node tools/publish-release.mjs --dry-run   # 何を上げるか見るだけ
+npm run release                            # 上げる
+npm run release -- --draft                 # 下書きにして、内容を見てから公開する
+```
+
+`dist/release/` の中身をそのまま添付する。リリースノートは直前のタグからの
+`git log` と、導入手順・報告先・ライセンスの案内から組み立てる
+（自分で書いたものを使うなら `-- --notes notes.md`）。
+
+**送る前に全部確かめてから送る。** 一度公開した配布物は、ダウンロードされた後では
+引っ込められない。`tools/publish-release.mjs` は次が揃わなければ何も送らない。
+
+| 見るところ | 止める事故 |
+|---|---|
+| DMG のファイル名に `package.json` の版が入っているか | 版を上げ忘れた配布物を新しい版として出す |
+| SHA256SUMS.txt と実ファイルのハッシュが一致するか | コピーの途中で壊れたものを配る |
+| `codesign --verify` / `stapler validate` / `spctl` | 署名・公証されていないものを配る |
+| タグが origin にあり、HEAD を指しているか | リリースと中身の対応が後から追えなくなる |
+| 作業ツリーがきれいか | 手元にしかない変更から作った配布物を出す |
+
+**CI では作らない。** ビルドを GitHub Actions に移すには Developer ID の秘密鍵を
+リポジトリの Secrets に入れることになる。鍵は証明書のある端末から出さない方針なので、
+**作るのは手元、上げるのだけ `gh`** という分担にしている。
+`gh auth login` の認証情報も手元のキーチェーンにある。
+
 ### ブラウザ版
 
 `dist-web/` を静的ファイルとして置くだけ。`base: './'` なのでサブディレクトリでも動く。
@@ -355,3 +388,46 @@ Actions の成果物として直接配る方式にしている。`dist-web/` は
 Electron の実行ファイルはブラウザ版のビルドに要らないが、electron 44 には
 install を省く環境変数が無いため止められない。`~/.cache/electron` を
 使い回して 2 回目以降の取得を省いている。
+
+---
+
+## ライセンス
+
+本体は MIT（[LICENSE](LICENSE)、著作権者は Hiroshi Suda）。`package.json` の
+`license` も合わせてある。
+
+同梱ライブラリの表示 `THIRD-PARTY-NOTICES.md` は **`tools/licenses.mjs` が作る**。
+手で編集しない。
+
+```sh
+npm run licenses                  # 作り直す
+node tools/licenses.mjs --check   # 古かったら異常終了する
+```
+
+**依存を足したり上げたりしたら作り直してコミットする。** バイナリを配る以上、
+組み込んだものの表示を欠かすと MIT/BSD/Apache のいずれにも反する。
+
+数え方の約束:
+
+- 対象は **配布物に入るもの**だけ。`tools/licenses.mjs` の `ROOTS`（レンダラと
+  メインのバンドルに入るライブラリ）から `dependencies` を辿った閉包を採る。
+- ビルド道具（vite, electron-builder, vitest …）と `@types/*` は実行時のコードを
+  持たないので数えない。
+- 木揺すりで実際には落ちたものも数える。**過剰に表示することはあっても、漏らさない。**
+- npm の外から来るものは `EXTRA` に手で書く。Electron（Chromium / Node.js を含む）と、
+  `@viz-js/viz` の WebAssembly に焼き込まれている Graphviz・Expat がこれにあたる。
+- `package.json` に `license` が無いものは `OVERRIDE` に根拠付きで書く
+  （現状は `khroma` の 1 件）。
+
+出来たものは `build.extraResources` でアプリの `Contents/Resources/` に入り、
+`tools/make-release.mjs` が `dist/release/` にも置く。バイナリだけを受け取った人にも
+条件が届くようにするため。
+
+## 不具合の報告
+
+[Issues](https://github.com/sudahiroshi/mdview/issues) で受ける。
+`.github/ISSUE_TEMPLATE/` に不具合用と要望用の様式を置いてある。
+
+不具合の様式が版と環境を訊くのは、`printToPDF` とファイル API の挙動が
+macOS とブラウザの版で変わるため。Markdown を貼ってもらう欄には
+**公開したくない内容を貼らないよう**注意書きを添えてある（Issue は誰でも読める）。
