@@ -177,15 +177,29 @@ async function openInWindow(entry: DocWindow, path: string): Promise<void> {
 }
 
 /**
+ * 同時に届いた要求を 1 件ずつ順に流すための列。
+ *
+ * Finder で複数の .md を選んで開くと open-file が立て続けに来る。直列化しないと、
+ * 1 件目が createWindow を待っている隙に 2 件目が走り、まだ path の入っていない
+ * そのウインドウを両方が「空き」と見なす。同じ枠に重ねて開いて後勝ちになり、
+ * ウインドウが 1 枚に潰れて 2 件目以降のファイルが消える。
+ */
+let openChain: Promise<void> = Promise.resolve()
+
+/**
  * 空いているウインドウがあればそこに、無ければ新しいウインドウに開く。
  *
  * すでに何か表示しているウインドウを黙って置き換えると、読んでいたものを見失う。
  * 置き換えたいときは、そのウインドウへドラッグ＆ドロップしてもらう。
  */
-async function openSomewhere(path: string): Promise<void> {
-  const focused = focusedEntry()
-  const empty = focused?.path === null ? focused : [...windows.values()].find((w) => w.path === null)
-  await openInWindow(empty ?? (await createWindow()), path)
+function openSomewhere(path: string): Promise<void> {
+  // 1 件失敗しても列は止めない。開けなかったことは openInWindow が利用者に伝える。
+  openChain = openChain.then(async () => {
+    const focused = focusedEntry()
+    const empty = focused?.path === null ? focused : [...windows.values()].find((w) => w.path === null)
+    await openInWindow(empty ?? (await createWindow()), path)
+  }, () => {})
+  return openChain
 }
 
 async function showOpenDialog(parent: BrowserWindow | null): Promise<string | null> {
