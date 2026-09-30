@@ -250,7 +250,7 @@ npx electron tools/make-icon.mjs
 
 ```sh
 npm run dist       # 開発中の確認用。arm64 のアプリだけを作る（速い）
-npm run dist:mac   # 配布用。universal の DMG を作り、dist/release/ にまとめる
+npm run dist:mac   # 配布用。3 種の DMG を作って公証し、dist/release/ にまとめる
 ```
 
 `dist:mac` の成果物:
