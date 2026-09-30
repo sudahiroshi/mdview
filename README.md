@@ -28,14 +28,14 @@ Markdown を「読む・見せる・部品を取り出す」ためのビュー�
 **[Releases](https://github.com/sudahiroshi/mdview/releases/latest) から**
 ダウンロードします（学内ファイルサーバに置いてある場合は、そちらでも同じものです）。
 
-3 つの DMG があるので、お使いの Mac に合うものを **1 つだけ** 選んでください
-（アップルメニュー →「このMacについて」で分かります）。
+最新版は **1.1.3** です。3 つの DMG があるので、お使いの Mac に合うものを
+**1 つだけ** 選んでください（アップルメニュー →「このMacについて」で分かります）。
 
 | Mac | ファイル | 大きさ |
 |---|---|---|
-| チップ: Apple M1 など | `mdview-<版>-arm64.dmg` | 約 126 MB |
-| プロセッサ: Intel Core… | `mdview-<版>-x64.dmg` | 約 132 MB |
-| 分からない / 両対応が欲しい | `mdview-<版>-universal.dmg` | 約 223 MB |
+| チップ: Apple M1 など | `mdview-1.1.3-arm64.dmg` | 約 126 MB |
+| プロセッサ: Intel Core… | `mdview-1.1.3-x64.dmg` | 約 132 MB |
+| 分からない / 両対応が欲しい | `mdview-1.1.3-universal.dmg` | 約 223 MB |
 
 DMG を開き、**mdview を「アプリケーション」へドラッグ**します（macOS 11 以降）。
 あとはダブルクリックで起動します。

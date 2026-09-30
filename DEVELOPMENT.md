@@ -270,6 +270,11 @@ dist/release/
 置くものは同じ。版はファイル名に入るので、`package.json` の `version` を
 上げてから作る。
 
+版を上げたら、**README.md と `.github/ISSUE_TEMPLATE/bug_report.yml` の版も直す。**
+README はダウンロードするファイル名をそのまま載せているので、放っておくと
+利用者が存在しないファイルを探すことになる。`publish-release.mjs` が
+`package.json` と食い違っていたら公開を止めるので、忘れても配ってしまうことはない。
+
 機種別を出しているのは、universal が両アーキを抱えて倍近くなるため。
 `お読みください.txt` は `tools/make-release.mjs` が出来上がったファイル名と
 実際の大きさを見て組み立てる（手で書くと版を上げるたびにずれる）。
@@ -355,6 +360,7 @@ npm run release -- --draft                 # 下書きにして、内容を見�
 | `codesign --verify` / `stapler validate` / `spctl` | 署名・公証されていないものを配る |
 | タグが origin にあり、HEAD を指しているか | リリースと中身の対応が後から追えなくなる |
 | 作業ツリーがきれいか | 手元にしかない変更から作った配布物を出す |
+| README などの版が `package.json` と一致するか | 古いファイル名を案内したまま配る |
 
 **CI では作らない。** ビルドを GitHub Actions に移すには Developer ID の秘密鍵を
 リポジトリの Secrets に入れることになる。鍵は証明書のある端末から出さない方針なので、

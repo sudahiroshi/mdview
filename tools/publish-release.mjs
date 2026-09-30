@@ -131,6 +131,18 @@ if (!tagged.ok) {
   else ok(`タグ ${tag} が origin にある`)
 }
 
+// ドキュメントの版。README に版を書いた以上、上げ忘れると利用者が古いファイル名を
+// 探すことになる。人が見て気づくのは配った後なので、機械で止める。
+for (const doc of ['README.md', '.github/ISSUE_TEMPLATE/bug_report.yml']) {
+  const text = await readFile(join(root, doc), 'utf8')
+  const others = [...new Set([...text.matchAll(/\b(\d+\.\d+\.\d+)\b/g)].map((m) => m[1]))].filter(
+    (v) => v !== version
+  )
+  if (!text.includes(version)) ng(`${doc} に版 ${version} の記載がありません`)
+  else if (others.length > 0) ng(`${doc} に別の版の記載があります: ${others.join(', ')}`)
+}
+if (problems.length === 0) ok('ドキュメントの版が一致')
+
 const dirty = (await tryRun('git', ['status', '--porcelain'], { cwd: root })).out.trim()
 if (dirty) ng(`未コミットの変更があります:\n${dirty.split('\n').map((l) => `      ${l}`).join('\n')}`)
 else ok('作業ツリーがきれい')
