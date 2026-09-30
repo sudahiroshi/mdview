@@ -1,6 +1,6 @@
 {
   "name": "mdview",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "図表を描画し、図をPDF/PNGへ、表をLaTeXへ書き出せるmacOS向けMarkdownビューアー",
   "main": "./out/main/index.js",
   "keywords": [],
@@ -39,7 +39,7 @@
     "web:dev": "vite --config vite.config.web.ts",
     "web:build": "tsc --noEmit -p tsconfig.web.json && vite build --config vite.config.web.ts",
     "web:serve": "node tools/serve-web.mjs",
-    "dist:mac": "electron-vite build && electron-builder --mac && node tools/make-release.mjs"
+    "dist:mac": "electron-vite build && electron-builder --mac && node tools/notarize-dmg.mjs && node tools/make-release.mjs"
   },
   "build": {
     "appId": "jp.ac.chibatech.suda.mdview",
@@ -76,10 +76,12 @@
           ]
         }
       ],
-      "identity": null,
       "darkModeSupport": true,
       "icon": "build/icon.icns",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "notarize": true
     },
     "dmg": {
       "title": "mdview ${version}",
@@ -106,7 +108,8 @@
           "type": "file",
           "path": "build/dmg/はじめにお読みください.txt"
         }
-      ]
+      ],
+      "sign": true
     },
     "afterPack": "./build/after-pack.cjs"
   }

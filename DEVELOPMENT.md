@@ -271,36 +271,62 @@ dist/release/
 導入手順は `build/dmg/はじめにお読みください.txt` が一次情報で、
 DMG の中にはそれが入り、置き場の案内にはその内容が取り込まれる。
 
-#### アドホック署名を必ず付ける
+#### 署名と公証
 
-`build/after-pack.cjs` が、出来上がったアプリに `codesign --sign -` を掛けている。
-**これを外すと配布が成立しない。**
+Developer ID の証明書がキーチェーンに入っていれば、electron-builder が自動で拾って
+署名する（`mac.identity` はあえて指定していない）。あわせて次を設定してある。
 
-electron-builder は `identity: null` のとき署名を一切行わない。署名の無いバンドルは、
-ダウンロードで付く隔離属性と組み合わさると **「壊れているため開けません」** になり、
-利用者側に回避する手立てがない。アドホック署名を付けておけば
-「開発元を検証できない」という通常の警告に留まり、システム設定から許可して起動できる。
+| 設定 | 理由 |
+|---|---|
+| `mac.hardenedRuntime: true` | 公証の必須条件 |
+| `mac.notarize: true` | アプリを公証して staple する |
+| `dmg.sign: true` | DMG 自体にも署名する |
 
-実際に確かめた違い:
+entitlements は electron-builder の既定（`allow-jit` / `allow-unsigned-executable-memory` /
+`disable-library-validation`）をそのまま使う。Electron に必要なものが揃っている。
 
-| | 署名なし | アドホック署名 |
-|---|---|---|
-| `codesign --verify --deep --strict` | `code object is not signed at all` | 成功 |
-| バンドルの Identifier | `Electron` | `jp.ac.chibatech.suda.mdview` |
-| 隔離属性を付けたとき | 「壊れている」扱い | 「開発元を検証できない」（許可すれば起動） |
+**公証は 2 段階ある。** electron-builder が公証するのは DMG に入れる前のアプリだけなので、
+`tools/notarize-dmg.mjs` で DMG も公証して staple する。
 
-`--deep` は非推奨だが、入れ子の Electron Framework と Helper まで一度に署名するには
-この方法が確実。署名後に `codesign --verify --deep --strict` が通ることを確認している。
+- アプリを公証して staple → 取り出したアプリがネット無しでも起動できる
+- DMG を公証して staple → ダウンロードした DMG を開く時点の判定も通る
 
-universal ビルドでは各アーキの一時ディレクトリでも `afterPack` が呼ばれる。
-統合前に署名しても捨てられるので、`-temp` で終わる出力先は飛ばしている。
+どちらか片方だと、条件によっては警告が出る。両方やっておけば受け取り側の操作は
+「ダブルクリックするだけ」になる。
 
-#### 証明書が手に入ったら
+#### 資格情報の預け方
 
-Apple Developer Program に登録して Developer ID 証明書を入れれば、
-`mac.identity` に証明書名を指定し、`mac.notarize` を有効にする。
-そうすれば受け取り側は普通にダブルクリックで開けるようになり、
-上の許可操作も `build/dmg/はじめにお読みください.txt` の説明も不要になる。
+**App 用パスワードをファイルに書かない。** キーチェーンに預けて名前で参照する。
+リポジトリが公開されているため、うっかりコミットする事故を最初から起こさない。
+
+```sh
+# 一度だけ。App 用パスワードは appleid.apple.com で作る
+xcrun notarytool store-credentials mdview --team-id <チーム ID>
+
+# ビルド時は名前だけ渡す（これは秘密ではない）
+APPLE_KEYCHAIN_PROFILE=mdview npm run dist:mac
+```
+
+`APPLE_KEYCHAIN_PROFILE` が無いときは公証を飛ばすので、`npm run dist`（開発中の確認用）は
+資格情報なしでも動く。
+
+公証には時間がかかる。3 アーキ × アプリと DMG で 6 回の提出になり、全体で 15〜30 分ほど。
+
+#### 証明書が無い環境では
+
+`build/after-pack.cjs` がアドホック署名を付ける（Developer ID があるときは
+electron-builder の署名で上書きされるだけなので何もしない）。
+
+署名の無いバンドルは、ダウンロードで付く隔離属性と組み合わさると
+**「壊れているため開けません」** になり、利用者側に回避する手立てがない。
+アドホック署名があれば「開発元を検証できない」という通常の警告に留まり、
+システム設定から許可して起動できる。実際に確かめた違い:
+
+| | 署名なし | アドホック署名 | Developer ID + 公証 |
+|---|---|---|---|
+| `codesign --verify` | 署名されていない | 成功 | 成功 |
+| `spctl -a` | rejected | rejected | **accepted** |
+| 受け取り側の操作 | 起動できない | システム設定から許可 | **ダブルクリックのみ** |
 
 ### ブラウザ版
 

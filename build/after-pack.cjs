@@ -4,15 +4,28 @@ const { join } = require('node:path')
 /**
  * 出来上がったアプリにアドホック署名を付ける。
  *
- * electron-builder は identity: null のとき署名を一切行わない。
- * その状態のバンドルはダウンロード（隔離属性が付く）と組み合わさると
- * 「壊れているため開けません」になり、利用者側で回避する手立てがない。
- * 証明書は持っていないので Developer ID 署名はできないが、
- * アドホック署名を付けておけば「開発元を検証できない」という通常の警告に留まり、
- * システム設定から許可して起動できるようになる。
+ * Developer ID の証明書が無い環境（他の人がこのリポジトリをビルドした場合など）では、
+ * electron-builder は署名を行わない。署名の無いバンドルはダウンロードで付く
+ * 隔離属性と組み合わさると「壊れているため開けません」になり、利用者側に
+ * 回避する手立てがない。アドホック署名を付けておけば「開発元を検証できない」
+ * という通常の警告に留まり、システム設定から許可して起動できる。
  */
+/** Developer ID の証明書が入っているか。あれば electron-builder が正式に署名する。 */
+function hasDeveloperId() {
+  try {
+    const out = execFileSync('security', ['find-identity', '-v', '-p', 'codesigning'], { encoding: 'utf8' })
+    return out.includes('Developer ID Application')
+  } catch {
+    return false
+  }
+}
+
 exports.default = async function afterPack(context) {
   if (context.electronPlatformName !== 'darwin') return
+
+  // 正式な署名ができるなら、この後 electron-builder が署名する。
+  // ここでアドホック署名を付けても上書きされるだけなので何もしない。
+  if (hasDeveloperId()) return
 
   // universal ビルドでは各アーキの一時ディレクトリでも呼ばれる。
   // 統合前に署名しても捨てられるので、最終成果物だけを対象にする。
