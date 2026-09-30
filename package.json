@@ -4,8 +4,16 @@
   "description": "図表を描画し、図をPDF/PNGへ、表をLaTeXへ書き出せるmacOS向けMarkdownビューアー",
   "main": "./out/main/index.js",
   "keywords": [],
-  "author": "",
+  "author": "Hiroshi Suda",
   "license": "MIT",
+  "homepage": "https://github.com/sudahiroshi/mdview",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sudahiroshi/mdview.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sudahiroshi/mdview/issues"
+  },
   "type": "module",
   "devDependencies": {
     "@plantuml/core": "^1.2026.8",
@@ -36,6 +44,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "dist": "electron-vite build && electron-builder --mac --dir --arm64",
+    "licenses": "node tools/licenses.mjs",
+    "release": "node tools/publish-release.mjs",
     "web:dev": "vite --config vite.config.web.ts",
     "web:build": "tsc --noEmit -p tsconfig.web.json && vite build --config vite.config.web.ts",
     "web:serve": "node tools/serve-web.mjs",
@@ -50,6 +60,10 @@
     "files": [
       "out/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      "LICENSE",
+      "THIRD-PARTY-NOTICES.md"
     ],
     "fileAssociations": [
       {

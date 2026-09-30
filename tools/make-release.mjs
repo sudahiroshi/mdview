@@ -7,6 +7,8 @@
 //   mdview-<版>-universal.dmg   どちらでも動く（そのぶん大きい）
 //   SHA256SUMS.txt              壊れていないか確かめるためのハッシュ値
 //   お読みください.txt            どれを選ぶかと導入手順
+//   LICENSE                     mdview 本体の利用条件（MIT）
+//   THIRD-PARTY-NOTICES.md      同梱ライブラリの利用条件
 import { createHash } from 'node:crypto'
 import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -83,5 +85,12 @@ ${await readFile(guide, 'utf8')}`
 // DMG の中にある「はじめにお読みください.txt」を並べると紛らわしい。
 await writeFile(join(out, 'お読みください.txt'), chooser)
 
+// 配布物にはライセンスを添える。バイナリだけを受け取った人にも条件が届くようにする。
+for (const f of ['LICENSE', 'THIRD-PARTY-NOTICES.md']) {
+  await copyFile(join(root, f), join(out, f))
+}
+
 console.log(`\nまとまりました: ${out}`)
-console.log('この中身をそのままファイルサーバへ置いてください。')
+console.log('この中身をそのまま配ってください。')
+console.log('  GitHub Releases へ:  npm run release')
+console.log('  ファイルサーバへ:     ディレクトリごとコピー')
