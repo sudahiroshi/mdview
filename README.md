@@ -19,7 +19,8 @@ Markdown を「読む・見せる・部品を取り出す」ためのビュー�
 
 | | デスクトップ版 | ブラウザ版（PWA） |
 |---|---|---|
-| 形 | macOS アプリ（DMG で配布） | Chrome / Edge で開く |
+| 入口 | [Releases](https://github.com/sudahiroshi/mdview/releases/latest) から DMG | <https://sudahiroshi.github.io/mdview/> |
+| 形 | macOS アプリ | Chrome / Edge で開く |
 | 向き | いつも使うなら | 他の端末でも使いたいとき |
 | PDF | ボタン一発で保存 | 印刷ダイアログを経由 |
 
@@ -50,10 +51,15 @@ DMG を開き、**mdview を「アプリケーション」へドラッグ**し�
 
 ### ブラウザ版を開く
 
-`npm run web:serve` で <http://localhost:4174/> を開きます。
+**<https://sudahiroshi.github.io/mdview/>** を開くだけです。入れるものはありません。
+
 Chrome のアドレスバー右のインストールボタンから入れると、独立したウインドウで動きます。
 一度開けばオフラインでも起動します。
 
+**対応ブラウザは Chrome / Edge です**（理由は[下](#ブラウザ版の違い)）。
+開いた .md がサーバへ送られることはありません。描画はすべて手元のブラウザの中で終わります。
+
+手元で動かしたいときは `npm run web:serve` で <http://localhost:4174/> を開きます。
 作り方は [開発者向けドキュメント](DEVELOPMENT.md) を参照してください。
 
 ---

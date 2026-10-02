@@ -380,9 +380,14 @@ npm run release -- --draft                 # 下書きにして、内容を見�
 
 #### GitHub Pages への配置
 
+公開先は **<https://sudahiroshi.github.io/mdview/>**。README もここを案内している。
+
 `.github/workflows/deploy-web.yml` が `main` への push で動く
 （ブラウザ版に関わるファイルが変わったときだけ。手動実行も可）。
 型検査と単体テストを通してから組み立て、成果物を Pages へ渡す。
+
+**ドキュメントだけを直した push では動かない。** paths の対象外なので、
+サイトは前回の配置のまま残る。中身を変えずに配置し直したいときは手動実行する。
 
 **成果物はリポジトリに入れない。** `gh-pages` ブランチも作らず、
 Actions の成果物として直接配る方式にしている。`dist-web/` はハッシュ付きの
