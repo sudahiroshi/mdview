@@ -196,6 +196,27 @@ MDVIEW_DEBUG_PORT=9333 node tools/probe.mjs "document.title" 1
 MDVIEW_DEBUG_PORT=9333 node tools/probe.mjs "document.title" sample
 ```
 
+### OS から渡された起動を調べる（ブラウザ版）
+
+manifest の `file_handlers` で受け取る経路は、PWA を入れて Finder から開かないと
+再現しない。開発ビルドでは `window.launchQueue` を差し替えて模擬できる。
+
+```js
+// launchQueue はゲッターだけなので、代入では差し替わらない（黙って失敗する）
+Object.defineProperty(window, 'launchQueue', {
+  configurable: true,
+  value: { setConsumer: (cb) => { window.__consumer = cb } }
+})
+window.__mdview.acceptLaunchedFiles((doc) => window.__mdview.render(doc))
+
+const file = new File(['# 題'], 'x.md', { type: 'text/markdown', lastModified: Date.now() })
+window.__consumer({ files: [{ kind: 'file', name: 'x.md', getFile: async () => file }] })
+```
+
+確かめるのは、ファイル無しの起動・複数渡された場合（先頭だけ）・`files` キーが
+無い場合・`getFile` が投げる場合（権限が下りない）で、いずれも表示中の文書を
+壊さないこと。`launchQueue` が無いブラウザで例外を出さないことも見る。
+
 ### ブラウザ版を調べる
 
 ```sh

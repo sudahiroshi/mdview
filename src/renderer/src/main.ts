@@ -4,7 +4,8 @@ import { assetFolderGrant, platform } from '../../platform'
 import { sanitizeInPlace } from '@core/sanitize'
 import { renderDiagrams } from './diagrams'
 import { resolveImages } from './images'
-import { bootWeb } from './web-boot'
+import { acceptLaunchedFiles, bootWeb } from './web-boot'
+import { openLaunchedFile } from '../../platform/web'
 import { showMenu, type MenuEntry } from './menu'
 import { openDocPdfDialog, serializeForPrint } from './doc-pdf'
 import { copyTableLatex, exportPdf, exportPng, exportSvg, saveTableLatex, snapshotSvg, toPngBytes, type ExportContext } from './export'
@@ -434,6 +435,9 @@ async function init(): Promise<void> {
   settings = await platform.getSettings()
   applySettings()
   if (!doc) render(null)
+
+  // OS から渡されたファイルを受け取る。描画は設定に依るので、ここまで来てから張る。
+  if (platform.kind === 'web') acceptLaunchedFiles((d) => render(d))
 }
 
 void init()
@@ -443,6 +447,9 @@ if (import.meta.env.DEV) {
   ;(window as unknown as Record<string, unknown>)['__mdview'] = {
     open: openPath,
     render,
+    // OS からファイルを渡された起動を、実際に起動せずに確かめるための窓口
+    acceptLaunchedFiles,
+    openLaunchedFile,
     platform,
     exportCtx,
     snapshotSvg,

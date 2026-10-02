@@ -120,6 +120,27 @@ async function openDialog(): Promise<DocPayload | null> {
   return toPayload(file)
 }
 
+/**
+ * OS から .md を渡されて起動したときの入口（File Handling API）。
+ *
+ * manifest の `file_handlers` と対で必要になる。宣言だけして受け取らないと、
+ * Finder から開いたときに空のまま起動して壊れて見える。
+ * ピッカーで開いたときと同じ扱いにするので、保存の検知もそのまま効く。
+ */
+export async function openLaunchedFile(handle: FileSystemFileHandle): Promise<DocPayload | null> {
+  try {
+    fileHandle = handle
+    const doc = await toPayload(await handle.getFile())
+    startWatch()
+    return doc
+  } catch {
+    // 権限が下りなかった場合。黙って通常の起動にする
+    fileHandle = null
+    stopWatch()
+    return null
+  }
+}
+
 async function openDropped(file: File): Promise<DocPayload | null> {
   fileHandle = null
   stopWatch()

@@ -1,4 +1,32 @@
-import { requestDocPdf } from '../../platform/web'
+import { openLaunchedFile, requestDocPdf } from '../../platform/web'
+import type { DocPayload } from '../../platform/types'
+
+/** File Handling API。対応していないブラウザには生えない。 */
+type LaunchQueue = {
+  setConsumer(cb: (params: { files?: FileSystemFileHandle[] }) => void): void
+}
+
+/**
+ * OS から .md を渡されて起動したときに受け取る。
+ *
+ * manifest で `file_handlers` を宣言しているので、インストールすると Chrome が
+ * 「.md を mdview に開かせるか」と尋ねる。ここで受け取らないと、許可した利用者が
+ * Finder から開いたときに空のまま起動してしまう。
+ *
+ * ブラウザ版は 1 枚の画面に 1 つの文書しか持てないので、複数渡されたら先頭だけ開く。
+ *
+ * 受け口を張るのは設定を読み終えてから。描画は設定に依らないと決まらないので、
+ * 先に張ると起動と競って設定前の描画になりうる。
+ */
+export function acceptLaunchedFiles(show: (doc: DocPayload) => void): void {
+  const queue = (window as unknown as { launchQueue?: LaunchQueue }).launchQueue
+  if (!queue) return
+  queue.setConsumer((params) => {
+    const handle = params.files?.[0]
+    if (!handle) return // ファイル無しの起動。通常どおり空で始める
+    void openLaunchedFile(handle).then((doc) => doc && show(doc))
+  })
+}
 
 /**
  * ブラウザ版だけの初期化。
